@@ -36,6 +36,7 @@ import {
   Legend,
 } from "recharts";
 import { complianceService } from "@/services/complianceService";
+import { adminService } from "@/services/adminService";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/shared/StatCard";
@@ -53,6 +54,12 @@ export function DPODashboard() {
   const { data: score } = useQuery({
     queryKey: ["compliance-score"],
     queryFn: complianceService.getScore,
+  });
+
+  const { data: health } = useQuery({
+    queryKey: ["system-health"],
+    queryFn: adminService.getSystemHealth,
+    refetchInterval: 30000,
   });
 
   const activityData = stats
@@ -249,12 +256,25 @@ export function DPODashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <StatusRow label="Encryption Engine" status="operational" description="AES-256-GCM field-level" />
-              <StatusRow label="Blockchain Anchoring" status="operational" description="Ganache (Chain ID 1337)" />
-              <StatusRow label="Audit Logger" status="operational" description="Hash-chained, append-only" />
-              <StatusRow label="Consent Manager" status="operational" description="6 consent types active" />
-              <StatusRow label="Chameleon Hash Engine" status="operational" description="Redaction proof generation" />
-              <StatusRow label="DPDP Compliance" status={score && score.overall_score >= 70 ? "operational" : "warning"} description={score ? `Score: ${score.overall_score}/100` : "Evaluating..."} />
+              {health?.subsystems ? (
+                Object.entries(health.subsystems).map(([key, sub]) => (
+                  <StatusRow
+                    key={key}
+                    label={key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                    status={sub.status as "operational" | "warning" | "error"}
+                    description={sub.description}
+                  />
+                ))
+              ) : (
+                <>
+                  <StatusRow label="Encryption Engine" status="operational" description="AES-256-GCM field-level" />
+                  <StatusRow label="Blockchain Anchoring" status="operational" description="Ganache (Chain ID 1337)" />
+                  <StatusRow label="Audit Logger" status="operational" description="Hash-chained, append-only" />
+                  <StatusRow label="Consent Manager" status="operational" description="6 consent types active" />
+                  <StatusRow label="Chameleon Hash Engine" status="operational" description="Redaction proof generation" />
+                  <StatusRow label="DPDP Compliance" status={score && score.overall_score >= 70 ? "operational" : "warning"} description={score ? `Score: ${score.overall_score}/100` : "Evaluating..."} />
+                </>
+              )}
             </div>
           </CardContent>
         </Card>

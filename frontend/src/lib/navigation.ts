@@ -13,6 +13,8 @@ import {
   Users,
   Stethoscope,
   Fingerprint,
+  Link2,
+  Settings,
   type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/types";
@@ -83,6 +85,18 @@ export const NAV_ITEMS: NavItem[] = [
     label: "User Management",
     path: "/admin/users",
     icon: Users,
+    roles: ["admin"],
+  },
+  {
+    label: "DPDP Operations",
+    path: "/admin/operations",
+    icon: Settings,
+    roles: ["admin"],
+  },
+  {
+    label: "Blockchain Explorer",
+    path: "/admin/blockchain",
+    icon: Link2,
     roles: ["admin"],
   },
 ];

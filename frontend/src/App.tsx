@@ -9,6 +9,7 @@ import { QueryProvider } from "@/contexts/QueryProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
 import { AppShell } from "@/layouts/AppShell";
+import { Toaster } from "sonner";
 import { LoginPage } from "@/pages/auth/LoginPage";
 import { RegisterPage } from "@/pages/auth/RegisterPage";
 import { PatientDashboard } from "@/pages/patient/PatientDashboard";
@@ -21,6 +22,8 @@ import { DPODashboard } from "@/pages/dpo/DPODashboard";
 import { DoctorDashboard } from "@/pages/doctor/DoctorDashboard";
 import { ComplianceDashboard } from "@/pages/dpo/ComplianceDashboard";
 import { IdentityGovernance } from "@/pages/admin/IdentityGovernance";
+import { DPDPOperationsCenter } from "@/pages/admin/DPDPOperationsCenter";
+import { BlockchainExplorer } from "@/pages/admin/BlockchainExplorer";
 import { ProfilePage } from "@/pages/shared/ProfilePage";
 import { UnauthorizedPage } from "@/pages/UnauthorizedPage";
 
@@ -29,6 +32,7 @@ function App() {
     <QueryProvider>
       <AuthProvider>
         <BrowserRouter>
+          <Toaster position="top-right" richColors closeButton />
           <Routes>
             {/* Public */}
             <Route path="/login" element={<LoginPage />} />
@@ -85,6 +89,8 @@ function App() {
               <Route path="/dpo/compliance" element={<ComplianceDashboard />} />
               <Route path="/compliance" element={<ComplianceDashboard />} />
               <Route path="/admin/users" element={<IdentityGovernance />} />
+              <Route path="/admin/operations" element={<DPDPOperationsCenter />} />
+              <Route path="/admin/blockchain" element={<BlockchainExplorer />} />
             </Route>
 
             {/* Defaults */}
