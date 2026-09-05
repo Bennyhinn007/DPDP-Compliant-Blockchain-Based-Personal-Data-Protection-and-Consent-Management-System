@@ -18,7 +18,6 @@ import {
   Activity,
   Database,
   TrendingUp,
-  CheckCircle2,
   Lock,
   BarChart3,
 } from "lucide-react";
@@ -40,10 +39,12 @@ import { adminService } from "@/services/adminService";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/shared/StatCard";
+import { PageHero } from "@/components/shared/PageHero";
 import { ComplianceGauge } from "@/components/shared/ComplianceGauge";
 
-const BAR_COLORS = ["#2563EB", "#10B981", "#F59E0B", "#0F4C81", "#8B5CF6"];
-const PIE_COLORS = ["#10B981", "#EF4444", "#F59E0B"];
+const BAR_COLORS = ["#6366F1", "#818CF8", "#4338CA", "#A5B4FC", "#312E81"];
+// Status pie keeps meaningful colors (granted/denied/pending).
+const PIE_COLORS = ["#16A34A", "#DC2626", "#D97706"];
 
 export function DPODashboard() {
   const { data: stats } = useQuery({
@@ -83,18 +84,12 @@ export function DPODashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-neutral-800">Compliance & Governance Center</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            Administrative compliance oversight and data protection governance
-          </p>
-        </div>
-        <Badge variant="success" className="flex items-center gap-1 px-3 py-1.5">
-          <CheckCircle2 className="h-3.5 w-3.5" />
-          System Operational
-        </Badge>
-      </div>
+      <PageHero
+        title="Compliance & Governance Center"
+        subtitle="Administrative compliance oversight and data protection governance"
+        icon={ShieldCheck}
+        pill={{ label: "System Operational", tone: "success" }}
+      />
 
       {/* Compliance score + KPIs */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">

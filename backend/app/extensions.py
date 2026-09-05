@@ -27,16 +27,23 @@ def init_extensions(app: Flask) -> None:
     mongo_client = MongoClient(app.config["MONGO_URI"])
     db = mongo_client[app.config["MONGO_DB_NAME"]]
 
-    # Web3 (Ganache)
-    try:
-        from web3 import Web3
-        provider = Web3.HTTPProvider(
-            app.config["GANACHE_URL"],
-            request_kwargs={"timeout": 3}
-        )
-        w3 = Web3(provider)
-    except Exception:
+    # Web3 — skipped entirely under TESTING so the suite is self-contained
+    # (no network). Otherwise connect to either the local Ganache node or the
+    # public Sepolia testnet, per BLOCKCHAIN_NETWORK. Blockchain anchoring
+    # degrades gracefully to "not connected" if the endpoint is unreachable.
+    if app.config.get("TESTING"):
         w3 = None
+    else:
+        network = app.config.get("BLOCKCHAIN_NETWORK", "ganache")
+        if network == "sepolia":
+            rpc_url = app.config.get("SEPOLIA_RPC_URL", "")
+        else:
+            rpc_url = app.config.get("GANACHE_URL", "http://localhost:8545")
+        try:
+            from web3 import Web3
+            w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={"timeout": 5})) if rpc_url else None
+        except Exception:
+            w3 = None
 
     # Set encryption key in environment if configured
     if app.config.get("ENCRYPTION_KEY"):

@@ -11,6 +11,11 @@ export const authService = {
     return data;
   },
 
+  async googleLogin(idToken: string): Promise<LoginResponse> {
+    const { data } = await api.post<LoginResponse>("/auth/google", { id_token: idToken });
+    return data;
+  },
+
   async register(
     email: string,
     password: string,
@@ -25,4 +30,19 @@ export const authService = {
     const { data } = await api.get<{ user: User }>("/auth/me");
     return data.user;
   },
+
+  // Phase 5: check whether the user recently tapped their RFID card
+  async getPhysicalPresence(): Promise<PhysicalPresenceStatus> {
+    const { data } = await api.get<PhysicalPresenceStatus>("/auth/physical-presence/status");
+    return data;
+  },
 };
+
+export interface PhysicalPresenceStatus {
+  present: boolean;
+  reason?: string;
+  verified_at?: string;
+  expires_at?: string;
+  seconds_left?: number;
+  card_id?: string;
+}

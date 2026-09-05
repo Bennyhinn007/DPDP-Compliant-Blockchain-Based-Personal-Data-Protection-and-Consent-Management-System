@@ -17,7 +17,7 @@ export function ComplianceGauge({ score, grade }: ComplianceGaugeProps) {
   const offset = circumference - (score / 100) * circumference;
 
   const color =
-    score >= 90 ? "#10B981" : score >= 70 ? "#2563EB" : score >= 50 ? "#F59E0B" : "#EF4444";
+    score >= 90 ? "#16A34A" : score >= 70 ? "#6366F1" : score >= 50 ? "#D97706" : "#DC2626";
 
   return (
     <div className="flex flex-col items-center">

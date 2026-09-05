@@ -25,9 +25,30 @@ class BaseConfig:
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(hours=24)
     JWT_ALGORITHM = "HS256"  # RS256 in production with key pair
 
+    # Google OAuth 2.0 (Sign in with Google)
+    # Secrets come from the environment / .env — never hard-code them.
+    GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+    GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+
     # Blockchain (Ganache)
     GANACHE_URL = os.environ.get("GANACHE_URL", "http://localhost:8545")
     GANACHE_CHAIN_ID = int(os.environ.get("GANACHE_CHAIN_ID", "1337"))
+
+    # Blockchain network selector: "ganache" (local) or "sepolia" (public testnet).
+    # Sepolia anchoring makes record hashes verifiable on a public block explorer.
+    BLOCKCHAIN_NETWORK = os.environ.get("BLOCKCHAIN_NETWORK", "ganache").lower()
+    # Public Sepolia RPC (e.g. an Infura/Alchemy URL). Only used when network=sepolia.
+    SEPOLIA_RPC_URL = os.environ.get("SEPOLIA_RPC_URL", "")
+    # Private key of the funded Sepolia sender account (hex, 0x-prefixed).
+    # NEVER commit this — keep it only in .env. Testnet ETH has no real value,
+    # but a leaked key is still bad hygiene.
+    SEPOLIA_PRIVATE_KEY = os.environ.get("SEPOLIA_PRIVATE_KEY", "")
+    SEPOLIA_CHAIN_ID = int(os.environ.get("SEPOLIA_CHAIN_ID", "11155111"))
+    # Block-explorer base used to build human-clickable links for anchored txs.
+    BLOCKCHAIN_EXPLORER_URL = os.environ.get(
+        "BLOCKCHAIN_EXPLORER_URL",
+        "https://sepolia.etherscan.io/tx/",
+    )
 
     # Encryption
     ENCRYPTION_KEY_STORE_PATH = os.environ.get("KEY_STORE_PATH", "./keystore")

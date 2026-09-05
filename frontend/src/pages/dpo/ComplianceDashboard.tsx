@@ -32,6 +32,7 @@ import { complianceService } from "@/services/complianceService";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/shared/StatCard";
+import { PageHero } from "@/components/shared/PageHero";
 import { ComplianceGauge } from "@/components/shared/ComplianceGauge";
 import type { ComplianceScore } from "@/types";
 
@@ -74,12 +75,11 @@ export function ComplianceDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-neutral-800">DPDP Compliance Dashboard</h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          Digital Personal Data Protection Act — Compliance Score & Control Coverage
-        </p>
-      </div>
+      <PageHero
+        title="DPDP Compliance Dashboard"
+        subtitle="Digital Personal Data Protection Act — Compliance Score & Control Coverage"
+        icon={ShieldCheck}
+      />
 
       {/* Top KPI row */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -122,7 +122,7 @@ export function ComplianceDashboard() {
                 <PolarGrid stroke="#E5E7EB" />
                 <PolarAngleAxis dataKey="category" tick={{ fontSize: 11, fill: "#6B7280" }} />
                 <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "#9CA3AF" }} />
-                <Radar name="Coverage" dataKey="value" stroke="#2563EB" fill="#2563EB" fillOpacity={0.2} />
+                <Radar name="Coverage" dataKey="value" stroke="#6366F1" fill="#6366F1" fillOpacity={0.2} />
               </RadarChart>
             </ResponsiveContainer>
           </CardContent>

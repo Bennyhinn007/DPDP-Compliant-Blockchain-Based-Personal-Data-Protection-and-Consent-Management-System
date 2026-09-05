@@ -24,7 +24,8 @@ import { consentService } from "@/services/consentService";
 import { patientService } from "@/services/patientService";
 import { auditService } from "@/services/auditService";
 import { StatCard } from "@/components/shared/StatCard";
-import { PageLoader } from "@/components/shared/PageLoader";
+import { PageHero } from "@/components/shared/PageHero";
+import { DashboardSkeleton } from "@/components/shared/Skeleton";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
@@ -32,7 +33,7 @@ import { CONSENT_LABELS, statusVariant } from "@/lib/consentMeta";
 import { formatDateTime, humanize } from "@/lib/utils";
 import type { ConsentType } from "@/types";
 
-const CHART_COLORS = ["#2563EB", "#10B981", "#F59E0B", "#0F4C81", "#8B5CF6", "#EC4899"];
+const CHART_COLORS = ["#6366F1", "#818CF8", "#4338CA", "#A5B4FC", "#312E81", "#C7D2FE"];
 
 export function PatientDashboard() {
   const { user } = useAuth();
@@ -75,20 +76,21 @@ export function PatientDashboard() {
   const chartData = Object.entries(consentDistribution).map(([name, value]) => ({ name, value }));
 
   if (loadingConsents && loadingRecords && loadingTimeline) {
-    return <PageLoader message="Loading your dashboard..." />;
+    return <DashboardSkeleton />;
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-neutral-800">
-          Welcome back, {user?.full_name?.split(" ")[0] || "Patient"}
-        </h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          Your health data overview and privacy status
-        </p>
-      </div>
+      {/* Hero header */}
+      <PageHero
+        title={`Welcome back, ${user?.full_name?.split(" ")[0] || "Patient"}`}
+        subtitle="Your health data overview and privacy status"
+        icon={ShieldCheck}
+        pill={{
+          label: privacyScore >= 70 ? "Protected" : "Review privacy",
+          tone: privacyScore >= 70 ? "success" : "warning",
+        }}
+      />
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

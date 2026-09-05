@@ -60,6 +60,25 @@ def auth(token):
     return {"Authorization": f"Bearer {token}"}
 
 
+def grant_physical_presence(app, client, email="ch_test@example.com"):
+    """
+    Simulate an RFID card tap so sensitive operations (erasure) are authorized.
+
+    Phase 5 gates record erasure behind a valid physical-presence token.
+    In a real flow the user taps their card at the terminal; here we record
+    the equivalent presence token directly for the logged-in user.
+    """
+    from app.extensions import get_db
+    from app.services.physical_presence_service import PhysicalPresenceService
+
+    with app.app_context():
+        db = get_db()
+        # The erasure tests use a single default user — grab the most
+        # recently created one and record presence for them.
+        user = db["users"].find_one(sort=[("created_at", -1)])
+        PhysicalPresenceService(db).record_presence(user["_id"], card_id="TEST-CARD-01")
+
+
 def create_record(client, token):
     """Helper: create a test healthcare record."""
     resp = client.post("/api/v1/patients/me/records", json={
@@ -122,9 +141,14 @@ class TestRecordCorrection:
             archives = list(db["version_history"].find({"resource_id": record_id}))
             assert len(archives) == 1
             assert archives[0]["modification_type"] == "correction"
-            # Original title should be in the archived snapshot
+            # The previous version is archived as a snapshot. Sensitive fields
+            # remain encrypted at rest (defense in depth); decrypting it must
+            # recover the original plaintext title.
+            from app.services.encryption_service import get_encryption_service
             snapshot = archives[0]["record_snapshot"]
-            assert "Original" in str(snapshot.get("title", ""))
+            enc = get_encryption_service()
+            original_title = enc.decrypt_field(snapshot.get("title", ""))
+            assert "Original" in str(original_title)
 
     def test_correction_creates_chameleon_record(self, client, app):
         token = register_and_login(client)
@@ -185,9 +209,10 @@ class TestRecordCorrection:
 class TestRecordErasure:
     """Test DPDP Right to Erasure via Chameleon Hash."""
 
-    def test_erase_record_success(self, client):
+    def test_erase_record_success(self, client, app):
         token = register_and_login(client)
         record_id = create_record(client, token)
+        grant_physical_presence(app, client)
 
         resp = client.post(f"/api/v1/patients/me/records/{record_id}/erase", json={
             "fields_to_erase": ["title", "description", "diagnosis_codes"],
@@ -202,6 +227,7 @@ class TestRecordErasure:
     def test_erased_fields_become_redacted(self, client, app):
         token = register_and_login(client)
         record_id = create_record(client, token)
+        grant_physical_presence(app, client)
 
         client.post(f"/api/v1/patients/me/records/{record_id}/erase", json={
             "fields_to_erase": ["title", "description"],
@@ -218,6 +244,7 @@ class TestRecordErasure:
     def test_erase_preserves_non_erased_fields(self, client, app):
         token = register_and_login(client)
         record_id = create_record(client, token)
+        grant_physical_presence(app, client)
 
         client.post(f"/api/v1/patients/me/records/{record_id}/erase", json={
             "fields_to_erase": ["title"],
@@ -231,9 +258,10 @@ class TestRecordErasure:
             assert raw["record_type"] == "consultation"  # Preserved
             assert raw["status"] == "active"  # Preserved
 
-    def test_cannot_erase_already_redacted(self, client):
+    def test_cannot_erase_already_redacted(self, client, app):
         token = register_and_login(client)
         record_id = create_record(client, token)
+        grant_physical_presence(app, client)
 
         # First erasure
         client.post(f"/api/v1/patients/me/records/{record_id}/erase", json={
@@ -251,6 +279,7 @@ class TestRecordErasure:
     def test_erasure_archives_previous_version(self, client, app):
         token = register_and_login(client)
         record_id = create_record(client, token)
+        grant_physical_presence(app, client)
 
         client.post(f"/api/v1/patients/me/records/{record_id}/erase", json={
             "fields_to_erase": ["title", "description"],
@@ -338,6 +367,7 @@ class TestAuditPreservation:
     def test_erasure_generates_audit_log(self, client, app):
         token = register_and_login(client)
         record_id = create_record(client, token)
+        grant_physical_presence(app, client)
 
         client.post(f"/api/v1/patients/me/records/{record_id}/erase", json={
             "fields_to_erase": ["title"],

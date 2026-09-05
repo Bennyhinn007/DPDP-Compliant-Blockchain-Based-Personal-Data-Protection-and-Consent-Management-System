@@ -6,13 +6,14 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { Plus, ShieldCheck } from "lucide-react";
 import { consentService } from "@/services/consentService";
 import { getErrorMessage } from "@/services/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
+import { PageHero } from "@/components/shared/PageHero";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,18 +40,17 @@ export function ConsentCenter() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-neutral-800">Consent Management Center</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            Control who can access your data and for what purpose
-          </p>
-        </div>
-        <Button onClick={() => setGrantOpen(true)}>
-          <Plus className="h-4 w-4" />
-          Grant Consent
-        </Button>
-      </div>
+      <PageHero
+        title="Consent Management Center"
+        subtitle="Control who can access your data and for what purpose"
+        icon={ShieldCheck}
+        actions={
+          <Button variant="accent" onClick={() => setGrantOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Grant Consent
+          </Button>
+        }
+      />
 
       {msg && <div className="rounded-md bg-success/10 px-4 py-3 text-sm text-success">{msg}</div>}
 

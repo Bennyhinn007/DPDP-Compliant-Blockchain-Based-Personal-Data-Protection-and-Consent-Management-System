@@ -10,6 +10,7 @@ from flask import request, jsonify
 from app.blueprints.compliance import compliance_bp
 from app.extensions import get_db
 from app.services.compliance_service import ComplianceService
+from app.services.physical_presence_service import physical_presence_required
 from app.middleware.auth_middleware import jwt_required, roles_required
 from app.utils.helpers import utc_now
 
@@ -97,6 +98,7 @@ def get_governance_data():
 @compliance_bp.route("/unlock-user/<user_id>", methods=["POST"])
 @jwt_required
 @roles_required("admin")
+@physical_presence_required
 def unlock_user(user_id):
     """Admin: Manually unlock a locked user account."""
     from flask import g
@@ -111,6 +113,7 @@ def unlock_user(user_id):
 @compliance_bp.route("/lock-user/<user_id>", methods=["POST"])
 @jwt_required
 @roles_required("admin")
+@physical_presence_required
 def lock_user(user_id):
     """Admin: Lock a user account."""
     from flask import g
@@ -130,6 +133,7 @@ def lock_user(user_id):
 @compliance_bp.route("/suspend-user/<user_id>", methods=["POST"])
 @jwt_required
 @roles_required("admin")
+@physical_presence_required
 def suspend_user(user_id):
     """Admin: Suspend a user account indefinitely."""
     from flask import g
@@ -145,6 +149,7 @@ def suspend_user(user_id):
 @compliance_bp.route("/activate-user/<user_id>", methods=["POST"])
 @jwt_required
 @roles_required("admin")
+@physical_presence_required
 def activate_user(user_id):
     """Admin: Reactivate a suspended user account."""
     from flask import g
@@ -159,6 +164,7 @@ def activate_user(user_id):
 @compliance_bp.route("/reset-mfa/<user_id>", methods=["POST"])
 @jwt_required
 @roles_required("admin")
+@physical_presence_required
 def reset_mfa(user_id):
     """Admin: Reset MFA for a user."""
     from flask import g
@@ -173,6 +179,7 @@ def reset_mfa(user_id):
 @compliance_bp.route("/delete-user/<user_id>", methods=["DELETE"])
 @jwt_required
 @roles_required("admin")
+@physical_presence_required
 def delete_user(user_id):
     """Admin: Delete a user and archive their data."""
     from flask import g
@@ -473,3 +480,59 @@ def get_all_audit_logs():
     total = db["audit_logs"].count_documents(query)
 
     return jsonify({"logs": logs, "total": total, "skip": skip, "limit": limit}), 200
+
+
+# ─────────────────────────────────────────────────────────────────────
+# PHYSICAL ACCESS LOG (RFID Hardware Terminal)
+# ─────────────────────────────────────────────────────────────────────
+
+@compliance_bp.route("/physical-access/log", methods=["GET"])
+@jwt_required
+@roles_required("admin")
+def physical_access_log():
+    """
+    Live feed of physical RFID verification events from the hardware terminal.
+
+    Reads RFID events (resource_type='rfid') from the immutable audit trail
+    and returns them for the admin Physical Access Log panel.
+
+    Query params:
+        limit: max events (default 30)
+    """
+    db = get_db()
+    limit = request.args.get("limit", 30, type=int)
+
+    events = list(
+        db["audit_logs"]
+        .find({"resource_type": "rfid"})
+        .sort("created_at", -1)
+        .limit(limit)
+    )
+
+    # Shape the response for the frontend
+    feed = []
+    granted = 0
+    denied = 0
+    for e in events:
+        is_granted = e.get("severity") == "info"  # info = granted, warning = denied
+        if is_granted:
+            granted += 1
+        else:
+            denied += 1
+        feed.append({
+            "_id": e["_id"],
+            "card_id": e.get("resource_id", ""),
+            "actor_role": e.get("actor_role", "unknown"),
+            "reason": e.get("reason", ""),
+            "granted": is_granted,
+            "created_at": e.get("created_at"),
+        })
+
+    return jsonify({
+        "events": feed,
+        "stats": {
+            "total": len(feed),
+            "granted": granted,
+            "denied": denied,
+        },
+    }), 200

@@ -34,3 +34,47 @@ def my_anchors():
     bc = BlockchainService(get_db(), get_web3())
     anchors = bc.get_anchors_for_patient(g.current_user_id)
     return jsonify({"anchors": anchors, "count": len(anchors)}), 200
+
+
+# ─────────────────────────────────────────────────────────────────────
+# LIVE CHAMELEON HASH COLLISION DEMO
+# ─────────────────────────────────────────────────────────────────────
+
+@blockchain_bp.route("/chameleon/demo", methods=["POST"])
+@jwt_required
+def chameleon_collision_demo():
+    """
+    Run a REAL chameleon hash collision on demand for demonstration.
+
+    Takes original + new content, generates a genuine discrete-log
+    chameleon-hash trapdoor collision, and returns the cryptographic
+    values proving both contents share an identical hash.
+
+    Body:
+        {
+          "original": "some original text",
+          "modified": "some corrected text"
+        }
+    """
+    from flask import request
+    from app.services.chameleon_hash_service import ChameleonHashSimulator
+
+    data = request.get_json(silent=True) or {}
+    original = str(data.get("original", "")).strip()
+    modified = str(data.get("modified", "")).strip()
+
+    if not original or not modified:
+        return jsonify({
+            "error": True,
+            "message": "Both 'original' and 'modified' content are required.",
+        }), 400
+
+    proof = ChameleonHashSimulator.generate_chameleon_collision(original, modified)
+
+    return jsonify({
+        "original_content": original,
+        "modified_content": modified,
+        "content_changed": original != modified,
+        "hash_identical": proof["verified"],
+        "proof": proof,
+    }), 200

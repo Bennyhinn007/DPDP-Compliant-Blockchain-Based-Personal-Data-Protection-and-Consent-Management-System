@@ -15,13 +15,17 @@ import {
   Heart, AlertTriangle, Clock, Trash2, KeyRound, Eye, ChevronDown,
   RefreshCw, Ban, CheckCircle2,
 } from "lucide-react";
+import { Nfc } from "lucide-react";
 import { adminService, type GovernanceUser } from "@/services/adminService";
+import { authService } from "@/services/authService";
+import { getErrorMessage } from "@/services/api";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { StatCard } from "@/components/shared/StatCard";
+import { PageHero } from "@/components/shared/PageHero";
 import { PageLoader } from "@/components/shared/PageLoader";
 import { formatDateTime } from "@/lib/utils";
 import { toast } from "sonner";
@@ -57,44 +61,62 @@ export function IdentityGovernance() {
     enabled: !!selectedUser,
   });
 
+  // Physical presence (RFID) — all privileged DPO actions require a recent tap.
+  const { data: presence } = useQuery({
+    queryKey: ["physical-presence"],
+    queryFn: authService.getPhysicalPresence,
+    refetchInterval: 2000,
+  });
+  const rfidVerified = presence?.present === true;
+
+  // Shared error handler — surfaces the "tap your card" message clearly.
+  const handleActionError = (err: unknown) => {
+    const msg = getErrorMessage(err);
+    if (msg.toLowerCase().includes("physical verification")) {
+      toast.error("Tap your RFID card to authorize this action.");
+    } else {
+      toast.error(msg);
+    }
+  };
+
   // Mutations
   const unlockMutation = useMutation({
     mutationFn: (userId: string) => adminService.unlockUser(userId),
     onSuccess: () => { toast.success("Account unlocked"); refetch(); queryClient.invalidateQueries({ queryKey: ["user-detail"] }); },
-    onError: () => toast.error("Failed to unlock account"),
+    onError: handleActionError,
   });
 
   const lockMutation = useMutation({
     mutationFn: ({ userId, reason }: { userId: string; reason: string }) =>
       adminService.lockUser(userId, reason),
     onSuccess: () => { toast.success("Account locked"); refetch(); setActionModal(null); setActionReason(""); },
-    onError: () => toast.error("Failed to lock account"),
+    onError: handleActionError,
   });
 
   const suspendMutation = useMutation({
     mutationFn: ({ userId, reason }: { userId: string; reason: string }) =>
       adminService.suspendUser(userId, reason),
     onSuccess: () => { toast.success("Account suspended"); refetch(); setActionModal(null); setActionReason(""); },
-    onError: () => toast.error("Failed to suspend account"),
+    onError: handleActionError,
   });
 
   const activateMutation = useMutation({
     mutationFn: (userId: string) => adminService.activateUser(userId),
     onSuccess: () => { toast.success("Account activated"); refetch(); },
-    onError: () => toast.error("Failed to activate account"),
+    onError: handleActionError,
   });
 
   const resetMfaMutation = useMutation({
     mutationFn: (userId: string) => adminService.resetMFA(userId),
     onSuccess: () => { toast.success("MFA reset"); refetch(); setActionModal(null); },
-    onError: () => toast.error("Failed to reset MFA"),
+    onError: handleActionError,
   });
 
   const deleteMutation = useMutation({
     mutationFn: ({ userId, reason }: { userId: string; reason: string }) =>
       adminService.deleteUser(userId, reason),
     onSuccess: () => { toast.success("User deleted"); refetch(); setSelectedUser(null); setActionModal(null); setActionReason(""); },
-    onError: () => toast.error("Failed to delete user"),
+    onError: handleActionError,
   });
 
   if (isLoading) return <PageLoader message="Loading Identity Governance..." />;
@@ -133,16 +155,42 @@ export function IdentityGovernance() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-neutral-800">User Management Center</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            Full lifecycle management — lock, unlock, suspend, activate, delete users
-          </p>
+      <PageHero
+        title="User Management Center"
+        subtitle="Full lifecycle management — lock, unlock, suspend, activate, delete users"
+        icon={Users}
+        actions={
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </Button>
+        }
+      />
+
+      {/* RFID Physical Verification Banner */}
+      <div
+        className={`flex items-center gap-3 rounded-lg border px-4 py-3 ${
+          rfidVerified
+            ? "border-success/30 bg-success/5"
+            : "border-warning/30 bg-warning/5"
+        }`}
+      >
+        <Nfc className={`h-5 w-5 flex-shrink-0 ${rfidVerified ? "text-success" : "text-warning"}`} />
+        <div className="flex-1">
+          {rfidVerified ? (
+            <p className="text-sm font-medium text-success">
+              Physical verification active
+              {presence?.seconds_left ? ` — valid for ${presence.seconds_left}s` : ""}. Privileged actions are authorized.
+            </p>
+          ) : (
+            <p className="text-sm font-medium text-warning">
+              Tap your DPO RFID card on the terminal to authorize privileged actions
+              (lock, unlock, suspend, activate, reset MFA, delete).
+            </p>
+          )}
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
-          <RefreshCw className="h-4 w-4" /> Refresh
-        </Button>
+        <Badge variant={rfidVerified ? "success" : "warning"}>
+          {rfidVerified ? "Verified" : "Not Verified"}
+        </Badge>
       </div>
 
       {/* KPIs */}

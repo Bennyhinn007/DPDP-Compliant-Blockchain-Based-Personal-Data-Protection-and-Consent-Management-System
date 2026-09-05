@@ -104,6 +104,118 @@ def get_my_record(record_id):
     return jsonify({"record": record}), 200
 
 
+@patients_bp.route("/me/records/<record_id>/lifecycle", methods=["GET"])
+@jwt_required
+@roles_required("patient")
+def get_my_record_lifecycle(record_id):
+    """
+    Record Lifecycle Story.
+
+    Aggregates every lifecycle event for one record into a single, ordered
+    timeline: created -> blockchain-anchored -> corrected (chameleon collision)
+    -> erased (redacted). Makes the invisible cryptography visible.
+
+    Returns:
+        { "lifecycle": { record_id, record_type, redacted, current_status,
+                          events: [ ...sorted ascending by timestamp ] } }
+    """
+    svc = _get_record_service()
+    # Reuse the service's ownership check + decryption (raises if not owner).
+    record = svc.get_record(record_id, g.current_user_id, "patient")
+
+    db = get_db()
+    rid = record_id
+    scoped = {"resource_id": rid, "resource_type": "healthcare_records"}
+
+    anchors = list(db["blockchain_anchors"].find(scoped).sort("created_at", 1))
+    chameleons = list(db["chameleon_hash_records"].find(scoped).sort("created_at", 1))
+    audits = list(db["audit_logs"].find({"resource_id": rid}).sort("created_at", 1))
+
+    events = []
+
+    # 1. CREATE node — from the record itself.
+    events.append({
+        "type": "created",
+        "timestamp": record.get("created_at"),
+        "title": "Record created",
+        "description": f"{record.get('record_type', 'record').title()} — \"{record.get('title', '')}\"",
+        "severity": "info",
+    })
+
+    # 2. ANCHOR nodes — one per blockchain anchor.
+    for a in anchors:
+        events.append({
+            "type": "anchored",
+            "timestamp": a.get("created_at"),
+            "title": "Anchored to blockchain",
+            "description": (
+                f"SHA-256 hash committed. "
+                f"{'Tx ' + a['transaction_hash'][:14] + '…' if a.get('transaction_hash') else 'Local anchor (chain offline)'}"
+            ),
+            "data_hash": a.get("data_hash"),
+            "transaction_hash": a.get("transaction_hash"),
+            "block_number": a.get("block_number"),
+            "anchor_type": a.get("anchor_type"),
+            "network": a.get("network"),
+            "explorer_url": a.get("explorer_url"),
+            "severity": "info",
+        })
+
+    # 3. REDACTION nodes — corrections / erasures via chameleon hash.
+    for c in chameleons:
+        rtype = c.get("redaction_type", "correction")
+        collision = c.get("chameleon_collision") or {}
+        events.append({
+            "type": "erased" if rtype == "erasure" else "corrected",
+            "timestamp": c.get("executed_at") or c.get("created_at"),
+            "title": "Record erased (Right to Erasure)" if rtype == "erasure"
+                     else "Record corrected (Right to Correction)",
+            "description": c.get("reason", ""),
+            "redaction_type": rtype,
+            "legal_basis": c.get("legal_basis"),
+            "affected_fields": c.get("affected_fields", []),
+            "chameleon_proof_hash": c.get("redaction_proof_hash"),
+            "chameleon_collision": {
+                "chameleon_hash": collision.get("chameleon_hash"),
+                "original_r": collision.get("original_r"),
+                "collision_r": collision.get("collision_r"),
+                "public_key_y": collision.get("public_key_y"),
+                "modulus_bits": collision.get("modulus_bits"),
+                "verified": collision.get("verified"),
+            } if collision else None,
+            "severity": "warning" if rtype == "erasure" else "info",
+        })
+
+    # 4. AUDIT nodes — supporting trail entries not already represented above.
+    #    (Skip the redaction audits since chameleon nodes already cover them.)
+    for ev in audits:
+        action = ev.get("action_type", "")
+        if action in ("update", "delete") or str(action).startswith("chameleon_"):
+            continue  # already surfaced as corrected/erased nodes
+        events.append({
+            "type": "audit",
+            "timestamp": ev.get("created_at"),
+            "title": (action or "event").replace("_", " ").title(),
+            "description": ev.get("reason", ""),
+            "severity": ev.get("severity", "info"),
+        })
+
+    # Chronological order; None timestamps sink to the end.
+    events.sort(key=lambda e: e.get("timestamp") or "~")
+
+    return jsonify({
+        "lifecycle": {
+            "record_id": rid,
+            "record_type": record.get("record_type"),
+            "redacted": bool(record.get("redacted")),
+            "current_status": "redacted" if record.get("redacted") else "active",
+            "anchor_count": len(anchors),
+            "redaction_count": len(chameleons),
+            "events": events,
+        }
+    }), 200
+
+
 @patients_bp.route("/me/records", methods=["POST"])
 @jwt_required
 @roles_required("patient")
@@ -442,6 +554,18 @@ def erase_record(record_id):
 
     if raw_record.get("redacted"):
         return jsonify({"error": True, "message": "Record already redacted"}), 422
+
+    # Phase 5: Physical presence gate — erasure is a sensitive, irreversible
+    # operation. Require a recent RFID tap (physical presence) before proceeding.
+    from app.services.physical_presence_service import PhysicalPresenceService
+    presence = PhysicalPresenceService(db)
+    presence_status = presence.is_physically_present(g.current_user_id)
+    if not presence_status.get("present"):
+        return jsonify({
+            "error": True,
+            "message": "Physical verification required. Please tap your RFID card to authorize this erasure.",
+            "requires_physical_verification": True,
+        }), 403
 
     # Chameleon Hash workflow
     ch = ChameleonHashSimulator()

@@ -4,17 +4,110 @@
 
 @layer base {
   body {
-    @apply bg-background text-neutral-900 antialiased;
+    @apply text-neutral-900 antialiased;
     font-family: "Inter", system-ui, sans-serif;
+    /* Clean flat background — no color mixing, just a calm light surface. */
+    background-color: #F8FAFC;
+    min-height: 100vh;
+  }
+
+  /* Headings read near-black for maximum legibility. */
+  h1, h2, h3 {
+    @apply text-neutral-900;
+    letter-spacing: -0.01em;
   }
 
   *:focus-visible {
     @apply outline-none ring-2 ring-primary-500 ring-offset-2;
+  }
+
+  /* Smooth transitions everywhere for a premium feel */
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  [role="button"] {
+    @apply transition-all duration-200;
+  }
+}
+
+@layer components {
+  /* Single-accent brand fill (solid indigo) — NO multi-color gradients. */
+  .brand-gradient {
+    @apply bg-primary-600;
+  }
+
+  /* Accent-only heading emphasis (kept solid, high-contrast). */
+  .text-gradient {
+    @apply text-primary-600;
+  }
+
+  /* Clean elevated surface: pure white, soft border, gentle shadow. */
+  .surface-elevated {
+    @apply border border-neutral-200 bg-white shadow-sm;
+  }
+
+  /* Card hover lift */
+  .hover-lift {
+    @apply transition-transform duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md;
   }
 }
 
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
+  }
+
+  /* Minimal custom scrollbar (WebKit) */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94A3B8;
+    background-clip: content-box;
+  }
+
+  /* Subtle entrance animation utility */
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-fade-in-up {
+    animation: fade-in-up 0.4s ease-out both;
+  }
+
+  /* Soft single-accent glow (used sparingly). */
+  .glow-primary {
+    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.12), 0 8px 24px -8px rgba(99, 102, 241, 0.3);
+  }
+  .glow-success {
+    box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.12), 0 8px 24px -8px rgba(22, 163, 74, 0.3);
+  }
+  .glow-accent {
+    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.12), 0 8px 24px -8px rgba(99, 102, 241, 0.3);
+  }
+
+  /* Shimmer sweep for skeleton loaders */
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
   }
 }

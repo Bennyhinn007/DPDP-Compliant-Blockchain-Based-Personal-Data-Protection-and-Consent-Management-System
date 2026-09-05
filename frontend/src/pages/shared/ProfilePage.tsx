@@ -29,6 +29,7 @@ import { patientService } from "@/services/patientService";
 import { consentService } from "@/services/consentService";
 import { auditService } from "@/services/auditService";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { PageHero } from "@/components/shared/PageHero";
 import { Badge } from "@/components/ui/badge";
 import { PageLoader } from "@/components/shared/PageLoader";
 import { MFASetupPanel } from "@/components/mfa/MFASetupPanel";
@@ -75,12 +76,11 @@ export function ProfilePage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-neutral-800">My Profile</h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          Identity details, security posture, and account governance
-        </p>
-      </div>
+      <PageHero
+        title="My Profile"
+        subtitle="Identity details, security posture, and account governance"
+        icon={User}
+      />
 
       {/* Identity Card */}
       <Card>

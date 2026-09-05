@@ -28,6 +28,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/shared/StatCard";
+import { PageHero } from "@/components/shared/PageHero";
+import { TamperDemo } from "@/components/shared/TamperDemo";
 import { truncateHash, formatDateTime, humanize } from "@/lib/utils";
 import type { VerificationResult } from "@/types";
 
@@ -37,7 +39,7 @@ const STATUS_CONFIG: Record<
 > = {
   VERIFIED: { label: "Verified", variant: "success", icon: ShieldCheck, color: "#10B981" },
   VERIFIED_MODIFIED: { label: "Authorized Modification", variant: "warning", icon: ShieldCheck, color: "#F59E0B" },
-  VERIFIED_REDACTED: { label: "Lawfully Redacted", variant: "neutral", icon: Lock, color: "#2563EB" },
+  VERIFIED_REDACTED: { label: "Lawfully Redacted", variant: "neutral", icon: Lock, color: "#6366F1" },
   INTEGRITY_VIOLATION: { label: "Integrity Violation", variant: "danger", icon: ShieldX, color: "#EF4444" },
   NO_ANCHOR: { label: "No Anchor", variant: "neutral", icon: ShieldAlert, color: "#9CA3AF" },
 };
@@ -82,18 +84,17 @@ export function IntegrityVerification() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-neutral-800">Data Integrity Verification</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            Verify healthcare records against blockchain-anchored SHA-256 hashes
-          </p>
-        </div>
-        <Button onClick={verifyAll} disabled={records.length === 0 || verifyMutation.isPending}>
-          <RefreshCw className={`h-4 w-4 ${verifyMutation.isPending ? "animate-spin" : ""}`} />
-          Verify All Records
-        </Button>
-      </div>
+      <PageHero
+        title="Data Integrity Verification"
+        subtitle="Verify healthcare records against blockchain-anchored SHA-256 hashes"
+        icon={ShieldCheck}
+        actions={
+          <Button variant="accent" onClick={verifyAll} disabled={records.length === 0 || verifyMutation.isPending}>
+            <RefreshCw className={`h-4 w-4 ${verifyMutation.isPending ? "animate-spin" : ""}`} />
+            Verify All Records
+          </Button>
+        }
+      />
 
       {/* Stats row */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -102,6 +103,9 @@ export function IntegrityVerification() {
         <StatCard label="Modified" value={modified + redacted} icon={ShieldAlert} variant="warning" />
         <StatCard label="Violations" value={violations} icon={ShieldX} variant="secondary" />
       </div>
+
+      {/* Live tamper-attempt demo */}
+      <TamperDemo />
 
       {/* Blockchain network status */}
       <Card>

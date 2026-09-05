@@ -12,6 +12,7 @@ import { getErrorMessage } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { GoogleSignInButton } from "@/components/shared/GoogleSignInButton";
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -44,14 +45,16 @@ export function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-50 via-background to-success/5 px-4">
-      <div className="w-full max-w-md">
+    <div className="relative flex min-h-screen items-center justify-center bg-neutral-50 px-4">
+      <div className="relative w-full max-w-md">
         {/* Logo header */}
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary-600 shadow-lg">
-            <ShieldCheck className="h-7 w-7 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-secondary">DPDP Healthcare Platform</h1>
+          <img
+            src="/logo-256.png"
+            alt="DPDP Health logo"
+            className="mx-auto mb-4 h-24 w-24 object-contain"
+          />
+          <h1 className="text-2xl font-bold text-neutral-900">DPDP Healthcare Platform</h1>
           <p className="mt-1 text-sm text-neutral-500">
             Secure, consent-driven health data management
           </p>
@@ -108,6 +111,16 @@ export function LoginPage() {
               {loading ? "Signing in..." : "Sign in"}
             </Button>
           </form>
+
+          {/* Divider */}
+          <div className="my-5 flex items-center gap-3">
+            <div className="h-px flex-1 bg-neutral-200" />
+            <span className="text-xs font-medium text-neutral-400">OR</span>
+            <div className="h-px flex-1 bg-neutral-200" />
+          </div>
+
+          {/* Google Sign-In */}
+          <GoogleSignInButton redirectTo={from} onError={setError} text="signin_with" />
 
           <div className="mt-6 flex items-center justify-center gap-2 text-xs text-neutral-400">
             <ShieldCheck className="h-3.5 w-3.5 text-success" />

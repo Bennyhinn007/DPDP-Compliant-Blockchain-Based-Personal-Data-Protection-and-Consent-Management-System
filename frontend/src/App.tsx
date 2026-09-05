@@ -24,6 +24,7 @@ import { ComplianceDashboard } from "@/pages/dpo/ComplianceDashboard";
 import { IdentityGovernance } from "@/pages/admin/IdentityGovernance";
 import { DPDPOperationsCenter } from "@/pages/admin/DPDPOperationsCenter";
 import { BlockchainExplorer } from "@/pages/admin/BlockchainExplorer";
+import { PhysicalAccessLog } from "@/pages/admin/PhysicalAccessLog";
 import { ProfilePage } from "@/pages/shared/ProfilePage";
 import { UnauthorizedPage } from "@/pages/UnauthorizedPage";
 
@@ -91,6 +92,7 @@ function App() {
               <Route path="/admin/users" element={<IdentityGovernance />} />
               <Route path="/admin/operations" element={<DPDPOperationsCenter />} />
               <Route path="/admin/blockchain" element={<BlockchainExplorer />} />
+              <Route path="/admin/physical-access" element={<PhysicalAccessLog />} />
             </Route>
 
             {/* Defaults */}

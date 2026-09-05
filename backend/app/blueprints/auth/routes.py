@@ -121,6 +121,45 @@ def login():
     return jsonify(result), 200
 
 
+@auth_bp.route("/google", methods=["POST"])
+def google_login():
+    """
+    Authenticate via Google (Sign in with Google) and return JWT tokens.
+
+    Request Body:
+        { "id_token": "<google-id-token-jwt>" }
+
+    Returns:
+        200: Login successful with tokens (same shape as /login)
+        401: Invalid Google token or inactive account
+    """
+    data = request.get_json()
+    if not data:
+        raise ValidationError("Request body required")
+
+    auth_service = _get_auth_service()
+    result = auth_service.login_with_google(
+        id_token_str=data.get("id_token", "").strip(),
+    )
+
+    # Audit: login event (Google provider)
+    from app.services.audit_service import AuditService
+    audit_svc = AuditService(get_db())
+    audit_svc.log_event(
+        actor_id=result["user"]["id"],
+        actor_role=result["user"]["role"],
+        action_type="login",
+        resource_type="auth",
+        resource_id=result["user"]["id"],
+        patient_id=result["user"]["id"] if result["user"]["role"] == "patient" else None,
+        reason="User login via Google OAuth",
+        details={"provider": "google"},
+        source_ip=request.remote_addr,
+    )
+
+    return jsonify(result), 200
+
+
 @auth_bp.route("/me", methods=["GET"])
 @jwt_required
 def get_current_user():
@@ -547,3 +586,97 @@ def webauthn_verify_complete():
         "message": "Biometric verification successful. Elevated access granted for 5 minutes.",
         "expires_in": 300,
     }), 200
+
+
+# ─────────────────────────────────────────────────────────────────────
+# RFID PHYSICAL VERIFICATION (Hardware Layer)
+# ─────────────────────────────────────────────────────────────────────
+
+@auth_bp.route("/rfid-verify", methods=["POST"])
+def rfid_verify():
+    """
+    Verify a physical RFID card tap from the ESP32 hardware terminal.
+
+    Matches the card UID to a user, logs a physical verification event
+    to the immutable audit trail, and returns granted/denied.
+
+    Body: { "card_id": "0E692106" }
+
+    No JWT required — this is a trusted hardware device on the local network.
+    """
+    from app.services.audit_service import AuditService
+
+    data = request.get_json(silent=True) or {}
+    card_id = str(data.get("card_id", "")).strip().upper()
+
+    if not card_id:
+        return jsonify({"granted": False, "message": "No card ID provided"}), 400
+
+    db = get_db()
+    user = db["users"].find_one({"rfid_card_id": card_id})
+
+    audit = AuditService(db)
+
+    if not user:
+        # Unknown card — log the denied attempt
+        audit.log_event(
+            actor_id="hardware-terminal",
+            actor_role="system",
+            action_type="verification",
+            resource_type="rfid",
+            resource_id=card_id,
+            reason=f"RFID access DENIED - unknown card {card_id}",
+            severity="warning",
+            source_ip=request.remote_addr,
+        )
+        return jsonify({
+            "granted": False,
+            "message": "Unknown card. Access denied.",
+            "card_id": card_id,
+        }), 200
+
+    # Known card — log the successful physical verification
+    full_name = user.get("full_name", "Unknown User")
+    role = user.get("role", "user")
+
+    audit.log_event(
+        actor_id=user["_id"],
+        actor_role=role,
+        action_type="verification",
+        resource_type="rfid",
+        resource_id=card_id,
+        patient_id=user["_id"] if role == "patient" else None,
+        reason=f"Physical identity verified via RFID card by {full_name}",
+        severity="info",
+        source_ip=request.remote_addr,
+    )
+
+    # Phase 5: issue a short-lived physical presence token for this user.
+    # Sensitive operations (erasure, redaction) can require this.
+    from app.services.physical_presence_service import PhysicalPresenceService
+    presence = PhysicalPresenceService(db)
+    token = presence.record_presence(user["_id"], card_id)
+
+    return jsonify({
+        "granted": True,
+        "message": f"Access granted. Welcome, {full_name}.",
+        "user_name": full_name,
+        "role": role,
+        "card_id": card_id,
+        "physical_presence_expires_at": token["expires_at"],
+    }), 200
+
+
+@auth_bp.route("/physical-presence/status", methods=["GET"])
+@jwt_required
+def physical_presence_status():
+    """
+    Check whether the current user has a valid physical presence token
+    (i.e., they recently tapped their RFID card).
+
+    The frontend polls this before allowing sensitive operations.
+    """
+    from app.services.physical_presence_service import PhysicalPresenceService
+    presence = PhysicalPresenceService(get_db())
+    status = presence.is_physically_present(g.current_user_id)
+    return jsonify(status), 200

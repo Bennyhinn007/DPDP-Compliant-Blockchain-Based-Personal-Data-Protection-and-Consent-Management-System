@@ -67,6 +67,45 @@ export interface HealthcareRecord {
   updated_at: string;
 }
 
+// ── Record Lifecycle Story ──────────────────────────────────────────
+export interface ChameleonCollisionProof {
+  chameleon_hash: string | null;
+  original_r: string | null;
+  collision_r: string | null;
+  public_key_y: string | null;
+  modulus_bits: number | null;
+  verified: boolean | null;
+}
+
+export interface LifecycleEvent {
+  type: "created" | "anchored" | "corrected" | "erased" | "audit";
+  timestamp: string;
+  title: string;
+  description?: string;
+  data_hash?: string;
+  transaction_hash?: string | null;
+  block_number?: number | null;
+  anchor_type?: string;
+  network?: string;
+  explorer_url?: string | null;
+  redaction_type?: "correction" | "erasure";
+  legal_basis?: string | null;
+  affected_fields?: string[];
+  chameleon_proof_hash?: string | null;
+  chameleon_collision?: ChameleonCollisionProof | null;
+  severity?: "info" | "warning" | "critical";
+}
+
+export interface RecordLifecycle {
+  record_id: string;
+  record_type: string;
+  redacted: boolean;
+  current_status: string;
+  anchor_count: number;
+  redaction_count: number;
+  events: LifecycleEvent[];
+}
+
 export type ConsentStatus = "active" | "withdrawn" | "expired" | "modified";
 export type ConsentType =
   | "healthcare_treatment"

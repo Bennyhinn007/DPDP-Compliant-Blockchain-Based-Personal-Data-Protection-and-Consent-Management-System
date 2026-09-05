@@ -7,18 +7,22 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Trash2, ShieldCheck, User, FileText, Eye, MapPin } from "lucide-react";
+import { Pencil, Trash2, ShieldCheck, User, FileText, Eye, MapPin, History } from "lucide-react";
 import { patientService } from "@/services/patientService";
+import { authService } from "@/services/authService";
 import { getErrorMessage } from "@/services/api";
 import { getLiveLocation, geolocationErrorMessage, type LiveLocation } from "@/lib/geolocation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
+import { PageHero } from "@/components/shared/PageHero";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ExportDropdown } from "@/components/shared/ExportDropdown";
+import { RecordLifecycleStory } from "@/components/shared/RecordLifecycleStory";
+import { PageLoader } from "@/components/shared/PageLoader";
 import { formatDate, humanize } from "@/lib/utils";
 import type { HealthcareRecord } from "@/types";
 
@@ -27,6 +31,7 @@ export function PersonalDataCenter() {
   const [correctTarget, setCorrectTarget] = useState<HealthcareRecord | null>(null);
   const [eraseTarget, setEraseTarget] = useState<HealthcareRecord | null>(null);
   const [viewTarget, setViewTarget] = useState<HealthcareRecord | null>(null);
+  const [lifecycleTarget, setLifecycleTarget] = useState<HealthcareRecord | null>(null);
   const [actionMsg, setActionMsg] = useState("");
   const [locating, setLocating] = useState(false);
   const [locationDraft, setLocationDraft] = useState<LiveLocation | null>(null);
@@ -73,15 +78,12 @@ export function PersonalDataCenter() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-neutral-800">My Personal Data Center</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            View, manage, and exercise control over your personal data
-          </p>
-        </div>
-        <ExportDropdown />
-      </div>
+      <PageHero
+        title="My Personal Data Center"
+        subtitle="View, manage, and exercise control over your personal data"
+        icon={User}
+        actions={<ExportDropdown />}
+      />
 
       {actionMsg && (
         <div className="rounded-md bg-success/10 px-4 py-3 text-sm text-success">{actionMsg}</div>
@@ -203,6 +205,14 @@ export function PersonalDataCenter() {
                     >
                       <Eye className="h-3.5 w-3.5" />
                       View
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setLifecycleTarget(rec)}
+                    >
+                      <History className="h-3.5 w-3.5" />
+                      Lifecycle
                     </Button>
                     <Button
                       variant="outline"
@@ -366,6 +376,14 @@ export function PersonalDataCenter() {
           </div>
         </Dialog>
       )}
+
+      {/* Record Lifecycle Story */}
+      {lifecycleTarget && (
+        <LifecycleDialog
+          record={lifecycleTarget}
+          onClose={() => setLifecycleTarget(null)}
+        />
+      )}
     </div>
   );
 }
@@ -438,6 +456,15 @@ function ErasureDialog({
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
 
+  // Phase 5: poll physical presence — erasure requires a recent RFID tap.
+  const { data: presence } = useQuery({
+    queryKey: ["physical-presence"],
+    queryFn: authService.getPhysicalPresence,
+    refetchInterval: 2000, // poll every 2s so a card tap unlocks the button live
+  });
+
+  const verified = presence?.present === true;
+
   const mutation = useMutation({
     mutationFn: () =>
       patientService.eraseRecord(record._id, ["title", "description", "diagnosis_codes", "symptoms", "treatment_notes"], reason),
@@ -449,10 +476,37 @@ function ErasureDialog({
     <Dialog open onClose={onClose} title="Request Erasure" description="DPDP Section 12 - Right to Erasure">
       <div className="space-y-4">
         {error && <div className="rounded-md bg-danger/5 px-3 py-2 text-sm text-danger">{error}</div>}
+
         <div className="rounded-md bg-warning/10 px-3 py-2.5 text-sm text-warning">
           This will permanently redact: <strong>{record.title}</strong>. The audit trail and
           blockchain proof are preserved, but sensitive content is replaced with [REDACTED].
         </div>
+
+        {/* Physical presence gate */}
+        <div
+          className={`flex items-center gap-2 rounded-md px-3 py-2.5 text-sm ${
+            verified ? "bg-success/10 text-success" : "bg-neutral-100 text-neutral-600"
+          }`}
+        >
+          {verified ? (
+            <>
+              <ShieldCheck className="h-4 w-4 flex-shrink-0" />
+              <span>
+                Physical identity verified via RFID
+                {presence?.seconds_left ? ` — valid for ${presence.seconds_left}s` : ""}
+              </span>
+            </>
+          ) : (
+            <>
+              <ShieldCheck className="h-4 w-4 flex-shrink-0 text-neutral-400" />
+              <span>
+                <strong>Tap your RFID card</strong> on the terminal to authorize this erasure.
+                Waiting for physical verification...
+              </span>
+            </>
+          )}
+        </div>
+
         <div className="space-y-1.5">
           <Label htmlFor="erase-reason">Reason for Erasure</Label>
           <Textarea
@@ -464,10 +518,64 @@ function ErasureDialog({
         </div>
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button variant="danger" onClick={() => mutation.mutate()} disabled={mutation.isPending || reason.length < 5}>
-            {mutation.isPending ? "Erasing..." : "Confirm Erasure"}
+          <Button
+            variant="danger"
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending || reason.length < 5 || !verified}
+          >
+            {mutation.isPending
+              ? "Erasing..."
+              : !verified
+                ? "Awaiting RFID Tap"
+                : "Confirm Erasure"}
           </Button>
         </div>
+      </div>
+    </Dialog>
+  );
+}
+
+function LifecycleDialog({
+  record,
+  onClose,
+}: {
+  record: HealthcareRecord;
+  onClose: () => void;
+}) {
+  const { data: lifecycle, isLoading, isError } = useQuery({
+    queryKey: ["record-lifecycle", record._id],
+    queryFn: () => patientService.getRecordLifecycle(record._id),
+  });
+
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title="Record Lifecycle Story"
+      description={`The full cryptographic history of "${record.title}"`}
+      className="max-w-xl"
+    >
+      <div className="max-h-[70vh] overflow-y-auto pr-1">
+        {isLoading && <PageLoader message="Reconstructing lifecycle..." />}
+        {isError && (
+          <p className="py-8 text-center text-sm text-danger">
+            Could not load the lifecycle for this record.
+          </p>
+        )}
+        {lifecycle && (
+          <>
+            <div className="mb-4 flex flex-wrap gap-2">
+              <Badge variant={lifecycle.redacted ? "danger" : "success"}>
+                {lifecycle.current_status}
+              </Badge>
+              <Badge variant="secondary">{lifecycle.anchor_count} anchors</Badge>
+              {lifecycle.redaction_count > 0 && (
+                <Badge variant="warning">{lifecycle.redaction_count} redactions</Badge>
+              )}
+            </div>
+            <RecordLifecycleStory lifecycle={lifecycle} />
+          </>
+        )}
       </div>
     </Dialog>
   );

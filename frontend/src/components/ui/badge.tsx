@@ -13,6 +13,7 @@ const badgeVariants = cva(
         danger: "bg-danger/10 text-danger",
         neutral: "bg-neutral-100 text-neutral-600",
         secondary: "bg-secondary/10 text-secondary",
+        accent: "bg-accent/10 text-accent-dark",
       },
     },
     defaultVariants: {

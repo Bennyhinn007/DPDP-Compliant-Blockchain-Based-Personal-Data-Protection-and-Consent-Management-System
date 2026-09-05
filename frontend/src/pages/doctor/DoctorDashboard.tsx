@@ -22,6 +22,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { PageHero } from "@/components/shared/PageHero";
 import { formatDateTime, humanize } from "@/lib/utils";
 
 export function DoctorDashboard() {
@@ -64,12 +65,11 @@ export function DoctorDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-neutral-800">Doctor Dashboard</h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          Consent-gated patient access — DPDP Act compliant
-        </p>
-      </div>
+      <PageHero
+        title="Doctor Dashboard"
+        subtitle="Consent-gated patient access — DPDP Act compliant"
+        icon={ShieldCheck}
+      />
 
       {/* Search */}
       <Card>

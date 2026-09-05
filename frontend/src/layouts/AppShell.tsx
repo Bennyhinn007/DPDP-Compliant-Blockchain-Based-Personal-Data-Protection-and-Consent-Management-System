@@ -6,11 +6,13 @@
  */
 
 import { useState } from "react";
-import { Outlet, NavLink } from "react-router-dom";
-import { ShieldCheck, X } from "lucide-react";
+import { Outlet, NavLink, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { X } from "lucide-react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
+import { Logo } from "@/components/shared/Logo";
 import { useAuth } from "@/contexts/AuthContext";
 import { getNavItemsForRole } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
@@ -18,6 +20,7 @@ import { cn } from "@/lib/utils";
 export function AppShell() {
   const { user } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const location = useLocation();
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -30,12 +33,7 @@ export function AppShell() {
           <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
           <aside className="absolute left-0 top-0 flex h-full w-64 flex-col bg-white">
             <div className="flex h-16 items-center justify-between border-b border-neutral-200 px-4">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600">
-                  <ShieldCheck className="h-4 w-4 text-white" />
-                </div>
-                <span className="text-sm font-semibold text-neutral-800">DPDP Health</span>
-              </div>
+              <Logo size={32} withWordmark />
               <button onClick={() => setMobileOpen(false)} aria-label="Close menu">
                 <X className="h-5 w-5 text-neutral-500" />
               </button>
@@ -69,7 +67,17 @@ export function AppShell() {
         <Header onMenuClick={() => setMobileOpen(true)} />
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
           <ErrorBoundary>
-            <Outlet />
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.28, ease: "easeOut" }}
+              >
+                <Outlet />
+              </motion.div>
+            </AnimatePresence>
           </ErrorBoundary>
         </main>
       </div>

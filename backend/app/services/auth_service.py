@@ -19,6 +19,21 @@ from app.utils.errors import (
 )
 
 
+# Cached Google transport — reused across requests so google-auth can cache
+# Google's signing certs (per their Cache-Control headers) instead of making
+# a fresh HTTPS round-trip on every login. Built lazily and only once.
+_GOOGLE_REQUEST = None
+
+
+def _google_request():
+    """Return a shared google.auth transport Request (cached certs)."""
+    global _GOOGLE_REQUEST
+    if _GOOGLE_REQUEST is None:
+        from google.auth.transport import requests as google_requests
+        _GOOGLE_REQUEST = google_requests.Request()
+    return _GOOGLE_REQUEST
+
+
 class AuthService:
     """Manages authentication operations."""
 
@@ -156,6 +171,143 @@ class AuthService:
             "expires_in": int(self.config.JWT_ACCESS_TOKEN_EXPIRES.total_seconds()),
             "user": self._sanitize_user(user),
         }
+
+    # ─────────────────────────────────────────────────────────────────
+    # GOOGLE OAUTH 2.0 LOGIN
+    # ─────────────────────────────────────────────────────────────────
+
+    def login_with_google(self, id_token_str: str) -> dict:
+        """
+        Authenticate a user via a Google ID token (Sign in with Google).
+
+        Verifies the ID token against Google using our GOOGLE_CLIENT_ID as the
+        expected audience, then finds-or-creates a passwordless user and issues
+        the SAME JWT token pair as a normal login.
+
+        Args:
+            id_token_str: The Google ID token (JWT) from the browser.
+
+        Returns:
+            Identical shape to login(): access_token, refresh_token, token_type,
+            expires_in, user.
+
+        Raises:
+            AuthenticationError: Token missing, invalid, or Google not configured.
+        """
+        if not id_token_str:
+            raise AuthenticationError("Google ID token required")
+
+        client_id = getattr(self.config, "GOOGLE_CLIENT_ID", "")
+        if not client_id:
+            raise AuthenticationError("Google login is not configured on the server")
+
+        # Verify the token with Google's public keys. A module-level cached
+        # transport reuses the HTTP connection AND lets google-auth cache the
+        # certs (honouring their Cache-Control), so repeat logins don't refetch
+        # Google's certs every time — this is the main latency fix.
+        try:
+            from google.oauth2 import id_token as google_id_token
+
+            claims = google_id_token.verify_oauth2_token(
+                id_token_str,
+                _google_request(),
+                client_id,
+            )
+        except ValueError as e:
+            raise AuthenticationError(f"Invalid Google token: {str(e)[:120]}")
+
+        # Google guarantees these on a valid ID token.
+        issuer = claims.get("iss", "")
+        if issuer not in ("accounts.google.com", "https://accounts.google.com"):
+            raise AuthenticationError("Invalid Google token issuer")
+
+        if not claims.get("email_verified", False):
+            raise AuthenticationError("Google account email is not verified")
+
+        email = (claims.get("email") or "").strip().lower()
+        if not email:
+            raise AuthenticationError("Google token missing email")
+
+        full_name = claims.get("name") or email.split("@")[0]
+        google_sub = claims.get("sub")
+
+        # Find existing user by email hash, or create a passwordless one.
+        email_hash = self._hash_email(email)
+        user = self.users.find_one({"email_hash": email_hash})
+
+        if user is None:
+            user = self._create_oauth_user(
+                email=email,
+                full_name=full_name,
+                google_sub=google_sub,
+            )
+        else:
+            # Block Google login for suspended/deleted accounts.
+            if user.get("status") not in ("active", None):
+                raise AuthenticationError("Account is not active")
+            # Backfill provider linkage on first Google login for a password user.
+            now = utc_now()
+            self.users.update_one(
+                {"_id": user["_id"]},
+                {"$set": {
+                    "last_login": now,
+                    "updated_at": now,
+                    "failed_login_attempts": 0,
+                    "google_sub": user.get("google_sub") or google_sub,
+                }},
+            )
+
+        # Issue the identical token pair used by password login.
+        access_token = self._generate_access_token(user)
+        refresh_token = self._generate_refresh_token(user)
+
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "Bearer",
+            "expires_in": int(self.config.JWT_ACCESS_TOKEN_EXPIRES.total_seconds()),
+            "user": self._sanitize_user(user),
+        }
+
+    def _create_oauth_user(self, email: str, full_name: str, google_sub: str = None) -> dict:
+        """
+        Create a passwordless user for OAuth sign-in (defaults to patient role).
+
+        Mirrors register() but with password_hash=None and auth_provider set.
+        Also creates the patient profile so the account behaves like a normal
+        self-registered patient.
+        """
+        user_id = generate_uuid()
+        now = utc_now()
+
+        user_doc = {
+            "_id": user_id,
+            "email_hash": self._hash_email(email),
+            "email_encrypted": email,  # In production: encrypt with AES-256
+            "password_hash": None,     # Passwordless — login only via Google
+            "auth_provider": "google",
+            "google_sub": google_sub,
+            "role": UserRole.PATIENT.value,
+            "full_name": full_name,
+            "status": "active",
+            "mfa_enabled": False,
+            "failed_login_attempts": 0,
+            "locked_until": None,
+            "last_login": now,
+            "created_at": now,
+            "updated_at": now,
+            "created_by": user_id,
+            "updated_by": user_id,
+        }
+
+        self.users.insert_one(user_doc)
+
+        # Auto-create the patient profile, matching register()'s behaviour.
+        from app.services.patient_service import PatientService
+        patient_svc = PatientService(self.db)
+        patient_svc.create_patient_profile(user_id, full_name)
+
+        return user_doc
 
     # ─────────────────────────────────────────────────────────────────
     # TOKEN OPERATIONS

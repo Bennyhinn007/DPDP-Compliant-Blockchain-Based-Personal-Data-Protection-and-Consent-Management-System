@@ -11,7 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   Pencil, Trash2, Eye, CheckCircle2, Clock,
-  FileText, Link2, Download, Activity,
+  FileText, Link2, Download, Activity, ClipboardList,
 } from "lucide-react";
 import { adminService, type ChameleonRequest, type AuditEntry, type BlockchainAnchor } from "@/services/adminService";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { PageLoader } from "@/components/shared/PageLoader";
 import { StatCard } from "@/components/shared/StatCard";
+import { PageHero } from "@/components/shared/PageHero";
 import { formatDateTime } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -79,17 +80,16 @@ export function DPDPOperationsCenter() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-neutral-800">DPDP Operations Center</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            Manage data correction and erasure requests — DPDP Section 12 compliance
-          </p>
-        </div>
-        <Button variant="outline" size="sm" className="gap-2" onClick={handleExportReport}>
-          <Download className="h-4 w-4" /> Export Report
-        </Button>
-      </div>
+      <PageHero
+        title="DPDP Operations Center"
+        subtitle="Manage data correction and erasure requests — DPDP Section 12 compliance"
+        icon={ClipboardList}
+        actions={
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleExportReport}>
+            <Download className="h-4 w-4" /> Export Report
+          </Button>
+        }
+      />
 
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

@@ -8,6 +8,7 @@ pymongo==4.12.1
 # Authentication
 PyJWT==2.10.1
 bcrypt==4.3.0
+google-auth==2.38.0
 
 # Blockchain
 web3==7.6.0
@@ -35,3 +36,7 @@ flasgger==0.9.7.1
 
 # Testing
 pytest==8.3.5
+mongomock==4.3.0
+
+# Benchmarking (optional — for benchmarks/benchmark_chameleon.py charts)
+matplotlib==3.10.0

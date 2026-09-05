@@ -26,16 +26,39 @@ from app.utils.helpers import generate_uuid, utc_now
 class BlockchainService:
     """Manages blockchain hash anchoring on Ganache."""
 
-    def __init__(self, db, w3: Web3):
+    def __init__(self, db, w3: Web3, config=None):
         self.db = db
         self.anchors = db["blockchain_anchors"]
         self.w3 = w3
 
-        # Use first Ganache account as sender
+        # Pull blockchain settings from the passed config, else the Flask app
+        # config, else safe defaults (keeps every existing 2-arg caller working).
+        self._network = "ganache"
+        self._private_key = ""
+        self._chain_id = None
+        self._explorer_url = ""
+        cfg = config
+        if cfg is None:
+            try:
+                from flask import current_app
+                cfg = current_app.config
+            except Exception:
+                cfg = None
+        if cfg is not None:
+            getter = cfg.get if hasattr(cfg, "get") else (lambda k, d=None: getattr(cfg, k, d))
+            self._network = (getter("BLOCKCHAIN_NETWORK", "ganache") or "ganache").lower()
+            self._private_key = getter("SEPOLIA_PRIVATE_KEY", "") or ""
+            self._explorer_url = getter("BLOCKCHAIN_EXPLORER_URL", "") or ""
+            self._chain_id = getter("SEPOLIA_CHAIN_ID", None) if self._network == "sepolia" else getter("GANACHE_CHAIN_ID", None)
+
+        # Sender account. Ganache exposes unlocked accounts; Sepolia derives the
+        # sender from the configured private key.
         self._account = None
         if w3:
             try:
-                if w3.is_connected():
+                if self._network == "sepolia" and self._private_key:
+                    self._account = w3.eth.account.from_key(self._private_key).address
+                elif w3.is_connected():
                     self._account = w3.eth.accounts[0]
             except Exception:
                 pass
@@ -124,6 +147,8 @@ class BlockchainService:
             "transaction_hash": tx_hash,
             "block_number": block_number,
             "transaction_status": tx_status,
+            "network": self._network,
+            "explorer_url": self.explorer_link(tx_hash),
             "created_at": now,
         }
 
@@ -132,30 +157,60 @@ class BlockchainService:
 
     def _send_hash_transaction(self, resource_id: str, data_hash: str) -> tuple:
         """
-        Send a transaction to Ganache containing the hash.
+        Send a transaction containing the hash as its data payload.
 
-        The hash is encoded as hex in the transaction data field.
-        No smart contract — just raw transaction with data payload.
+        Two modes:
+          - Ganache: accounts are unlocked, so we use eth.send_transaction.
+          - Sepolia (public testnet): we sign a raw transaction locally with
+            the configured private key and broadcast it (eth.send_raw_transaction),
+            which is required because public nodes don't hold your keys.
+
+        The hash is embedded as a self-transaction data field. No smart
+        contract, no healthcare data on-chain — only the SHA-256 anchor.
 
         Returns:
             Tuple of (tx_hash_hex, block_number)
         """
-        # Encode: resource_id + "|" + data_hash as hex bytes
         payload = f"{resource_id}|{data_hash}".encode("utf-8")
 
+        # ── Sepolia: locally-signed raw transaction ────────────────────
+        if self._network == "sepolia" and self._private_key:
+            nonce = self.w3.eth.get_transaction_count(self._account)
+            tx = {
+                "from": self._account,
+                "to": self._account,
+                "value": 0,
+                "data": self.w3.to_hex(payload),
+                "nonce": nonce,
+                "chainId": self._chain_id or self.w3.eth.chain_id,
+                "gas": 60000,
+                "maxFeePerGas": self.w3.to_wei(30, "gwei"),
+                "maxPriorityFeePerGas": self.w3.to_wei(2, "gwei"),
+            }
+            signed = self.w3.eth.account.sign_transaction(tx, self._private_key)
+            raw = getattr(signed, "raw_transaction", None) or signed.rawTransaction
+            tx_hash = self.w3.eth.send_raw_transaction(raw)
+            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=180)
+            return "0x" + receipt.transactionHash.hex(), receipt.blockNumber
+
+        # ── Ganache: unlocked account ──────────────────────────────────
         tx = {
             "from": self._account,
-            "to": self._account,  # Self-transaction (data storage only)
+            "to": self._account,
             "value": 0,
             "data": self.w3.to_hex(payload),
             "gas": 100000,
             "gasPrice": self.w3.to_wei(20, "gwei"),
         }
-
         tx_hash = self.w3.eth.send_transaction(tx)
         receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=10)
-
         return "0x" + receipt.transactionHash.hex(), receipt.blockNumber
+
+    def explorer_link(self, tx_hash: str) -> Optional[str]:
+        """Build a human-clickable block-explorer URL for a tx (Sepolia)."""
+        if not tx_hash or not self._explorer_url or self._network != "sepolia":
+            return None
+        return f"{self._explorer_url}{tx_hash}"
 
     # ─────────────────────────────────────────────────────────────────
     # VERIFICATION
@@ -239,9 +294,10 @@ class BlockchainService:
                 pass
         return {
             "connected": connected,
-            "network": "ganache-local",
-            "chain_id": 1337,
+            "network": "sepolia" if self._network == "sepolia" else "ganache-local",
+            "chain_id": self._chain_id or (11155111 if self._network == "sepolia" else 1337),
             "block_number": block_number,
             "account": self._account,
+            "explorer_base": self._explorer_url if self._network == "sepolia" else None,
             "total_anchors": self.anchors.count_documents({}),
         }

@@ -15,6 +15,7 @@ import {
   Fingerprint,
   Link2,
   Settings,
+  Nfc,
   type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/types";
@@ -97,6 +98,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Blockchain Explorer",
     path: "/admin/blockchain",
     icon: Link2,
+    roles: ["admin"],
+  },
+  {
+    label: "Physical Access Log",
+    path: "/admin/physical-access",
+    icon: Nfc,
     roles: ["admin"],
   },
 ];

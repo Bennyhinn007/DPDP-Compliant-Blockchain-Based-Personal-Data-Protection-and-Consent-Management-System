@@ -13,6 +13,7 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<User>;
+  loginWithGoogle: (idToken: string) => Promise<User>;
   logout: () => void;
 }
 
@@ -36,13 +37,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string): Promise<User> => {
-    const result = await authService.login(email, password);
+  // Shared: persist a successful auth result and set the active user.
+  const persistSession = (result: {
+    access_token: string;
+    refresh_token: string;
+    user: User;
+  }): User => {
     localStorage.setItem("access_token", result.access_token);
     localStorage.setItem("refresh_token", result.refresh_token);
     localStorage.setItem("user", JSON.stringify(result.user));
     setUser(result.user);
     return result.user;
+  };
+
+  const login = async (email: string, password: string): Promise<User> => {
+    const result = await authService.login(email, password);
+    return persistSession(result);
+  };
+
+  const loginWithGoogle = async (idToken: string): Promise<User> => {
+    const result = await authService.googleLogin(idToken);
+    return persistSession(result);
   };
 
   const logout = () => {
@@ -60,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user,
         isLoading,
         login,
+        loginWithGoogle,
         logout,
       }}
     >

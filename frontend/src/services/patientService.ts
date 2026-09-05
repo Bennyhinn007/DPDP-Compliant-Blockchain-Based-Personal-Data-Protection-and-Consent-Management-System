@@ -3,7 +3,7 @@
  */
 
 import api from "./api";
-import type { Patient, HealthcareRecord } from "@/types";
+import type { Patient, HealthcareRecord, RecordLifecycle } from "@/types";
 
 export const patientService = {
   async getProfile(): Promise<Patient> {
@@ -35,5 +35,12 @@ export const patientService = {
       reason,
     });
     return data;
+  },
+
+  async getRecordLifecycle(recordId: string): Promise<RecordLifecycle> {
+    const { data } = await api.get<{ lifecycle: RecordLifecycle }>(
+      `/patients/me/records/${recordId}/lifecycle`
+    );
+    return data.lifecycle;
   },
 };

@@ -241,4 +241,24 @@ export const adminService = {
     const { data } = await api.get("/compliance/audit/all", { params });
     return data;
   },
+
+  // ─── Physical Access Log (RFID Hardware Terminal) ──────────────
+  async getPhysicalAccessLog(limit = 30): Promise<{
+    events: PhysicalAccessEvent[];
+    stats: { total: number; granted: number; denied: number };
+  }> {
+    const { data } = await api.get("/compliance/physical-access/log", {
+      params: { limit },
+    });
+    return data;
+  },
 };
+
+export interface PhysicalAccessEvent {
+  _id: string;
+  card_id: string;
+  actor_role: string;
+  reason: string;
+  granted: boolean;
+  created_at: string;
+}

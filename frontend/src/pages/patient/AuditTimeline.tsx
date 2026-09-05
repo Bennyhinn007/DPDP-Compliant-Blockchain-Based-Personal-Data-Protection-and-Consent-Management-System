@@ -21,6 +21,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/shared/StatCard";
+import { PageHero } from "@/components/shared/PageHero";
 import { formatDateTime, humanize } from "@/lib/utils";
 import type { AuditEvent } from "@/types";
 
@@ -79,12 +80,11 @@ export function AuditTimeline() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-neutral-800">Audit Timeline</h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          Complete history of actions on your data
-        </p>
-      </div>
+      <PageHero
+        title="Audit Timeline"
+        subtitle="Complete history of actions on your data"
+        icon={Activity}
+      />
 
       {/* Statistics */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

@@ -6,7 +6,8 @@
  * with blockchain immutability through authorized hash collisions.
  */
 
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   Hash,
@@ -20,10 +21,17 @@ import {
   XCircle,
   Fingerprint,
   BookOpen,
+  Sparkles,
+  KeyRound,
 } from "lucide-react";
 import api from "@/services/api";
+import { integrityService, type ChameleonDemoResult } from "@/services/integrityService";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { PageHero } from "@/components/shared/PageHero";
 import { formatDateTime } from "@/lib/utils";
 
 export function ChameleonHashCenter() {
@@ -44,12 +52,12 @@ export function ChameleonHashCenter() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-neutral-800">Chameleon Hash Visualization Center</h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          Research contribution: Redactable blockchain architecture for DPDP compliance
-        </p>
-      </div>
+      <PageHero
+        title="Chameleon Hash Visualization Center"
+        subtitle="Research contribution: Redactable blockchain architecture for DPDP compliance"
+        icon={Fingerprint}
+        pill={{ label: "Research", tone: "accent" }}
+      />
 
       {/* Section 1: Traditional vs Chameleon Comparison */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -184,6 +192,9 @@ export function ChameleonHashCenter() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Section 2.5: LIVE COLLISION DEMO */}
+      <LiveCollisionDemo />
 
       {/* Section 3 & 4: DPDP Workflows */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -371,6 +382,115 @@ function WorkflowStep({
         <p className="text-sm font-medium text-neutral-800">{title}</p>
         <p className="text-xs text-neutral-500">{description}</p>
       </div>
+    </div>
+  );
+}
+
+
+// ─────────────────────────────────────────────────────────────────────
+// LIVE CHAMELEON COLLISION DEMO
+// ─────────────────────────────────────────────────────────────────────
+
+function LiveCollisionDemo() {
+  const [original, setOriginal] = useState("Diagnosis: I25.1 (Atherosclerotic heart disease)");
+  const [modified, setModified] = useState("Diagnosis: I25.10 (corrected under DPDP Section 12)");
+  const [result, setResult] = useState<ChameleonDemoResult | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: () => integrityService.chameleonCollisionDemo(original, modified),
+    onSuccess: (data) => setResult(data),
+  });
+
+  return (
+    <Card className="border-primary-200">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Sparkles className="h-5 w-5 text-primary-600" />
+          Live Chameleon Collision — Try It Yourself
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-neutral-600">
+          Enter any two different messages. The system generates a <strong>real cryptographic
+          trapdoor collision</strong> so that both messages produce the <strong>identical</strong> chameleon
+          hash — proving how a record can be lawfully redacted without breaking its blockchain anchor.
+        </p>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="orig">Original Content</Label>
+            <Input id="orig" value={original} onChange={(e) => setOriginal(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="mod">Corrected / Redacted Content</Label>
+            <Input id="mod" value={modified} onChange={(e) => setModified(e.target.value)} />
+          </div>
+        </div>
+
+        <Button
+          onClick={() => mutation.mutate()}
+          disabled={mutation.isPending || !original || !modified || original === modified}
+          className="gap-2"
+        >
+          <Sparkles className="h-4 w-4" />
+          {mutation.isPending ? "Computing collision..." : "Generate Real Collision"}
+        </Button>
+
+        {result && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-3 rounded-lg border border-neutral-200 bg-neutral-50 p-4"
+          >
+            {/* Verdict */}
+            <div
+              className={`flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium ${
+                result.hash_identical ? "bg-success/10 text-success" : "bg-danger/10 text-danger"
+              }`}
+            >
+              {result.hash_identical ? (
+                <CheckCircle2 className="h-4 w-4" />
+              ) : (
+                <XCircle className="h-4 w-4" />
+              )}
+              {result.hash_identical
+                ? "Content changed, but the chameleon hash is IDENTICAL — collision verified."
+                : "Verification failed."}
+            </div>
+
+            {/* Scheme */}
+            <div className="flex items-center gap-2 text-xs text-neutral-500">
+              <KeyRound className="h-3.5 w-3.5" />
+              <span className="font-mono">{result.proof.scheme}</span>
+              <Badge variant="neutral">{result.proof.modulus_bits}-bit</Badge>
+            </div>
+
+            {/* The identical hash */}
+            <ProofRow label="Chameleon Hash (before AND after)" value={result.proof.chameleon_hash} highlight />
+            <ProofRow label="Randomness r (original)" value={result.proof.original_r} />
+            <ProofRow label="Randomness r' (trapdoor collision)" value={result.proof.collision_r} />
+            <ProofRow label="Public Key y = g^x mod p" value={result.proof.public_key_y} />
+
+            <div className="rounded-md bg-primary-50 px-3 py-2 text-xs text-primary-700">
+              Both messages hash to the same value because the trapdoor holder computed a new
+              randomness <span className="font-mono">r&apos;</span> satisfying{" "}
+              <span className="font-mono">g^m · y^r = g^m&apos; · y^r&apos; (mod p)</span>. Without the
+              secret key, this is computationally infeasible.
+            </div>
+          </motion.div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ProofRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className={`rounded-md p-2.5 ${highlight ? "bg-success/5 border border-success/20" : "bg-white"}`}>
+      <p className="text-[10px] font-medium uppercase tracking-wide text-neutral-400">{label}</p>
+      <p className="mt-0.5 break-all font-mono text-xs text-neutral-700">
+        {value.length > 90 ? `${value.slice(0, 90)}...` : value}
+      </p>
     </div>
   );
 }

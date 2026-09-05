@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { PageLoader } from "@/components/shared/PageLoader";
+import { PageHero } from "@/components/shared/PageHero";
 import { formatDateTime } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -56,17 +57,16 @@ export function BlockchainExplorer() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-neutral-800">Blockchain Explorer</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            Browse and verify all blockchain anchors — {total} total anchors
-          </p>
-        </div>
-        <Button variant="outline" size="sm" className="gap-2" onClick={() => refetch()}>
-          <RefreshCw className="h-4 w-4" /> Refresh
-        </Button>
-      </div>
+      <PageHero
+        title="Blockchain Explorer"
+        subtitle={`Browse and verify all blockchain anchors — ${total} total anchors`}
+        icon={Link2}
+        actions={
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </Button>
+        }
+      />
 
       {/* Search */}
       <Card>
