@@ -25,6 +25,11 @@ def create_app(config_name: str = "development") -> Flask:
     app = Flask(__name__)
     app.config.from_object(get_config(config_name))
 
+    # Production guardrail: fail fast on missing/insecure secrets rather than
+    # starting up with silently-broken encryption or default dev keys.
+    if config_name == "production":
+        _assert_production_config(app)
+
     # Initialize CORS
     CORS(app, resources={
         r"/api/*": {
@@ -58,6 +63,31 @@ def create_app(config_name: str = "development") -> Flask:
         return {"status": "healthy", "service": "dpdp-healthcare-api"}, 200
 
     return app
+
+
+def _assert_production_config(app: Flask) -> None:
+    """Refuse to start production with missing or default-dev secrets."""
+    problems = []
+
+    if not app.config.get("ENCRYPTION_KEY"):
+        problems.append("ENCRYPTION_KEY is not set (stored PII cannot be decrypted).")
+
+    insecure_defaults = {
+        "SECRET_KEY": "dev-secret-key-change-in-production",
+        "JWT_SECRET_KEY": "jwt-dev-secret-change-in-production",
+    }
+    for key, dev_value in insecure_defaults.items():
+        if app.config.get(key) == dev_value:
+            problems.append(f"{key} is still the insecure development default.")
+
+    if "mongodb://localhost" in str(app.config.get("MONGO_URI", "")):
+        problems.append("MONGO_URI points at localhost (set your Atlas connection string).")
+
+    if problems:
+        raise RuntimeError(
+            "Refusing to start in production due to configuration problems:\n  - "
+            + "\n  - ".join(problems)
+        )
 
 
 def _register_blueprints(app: Flask) -> None:

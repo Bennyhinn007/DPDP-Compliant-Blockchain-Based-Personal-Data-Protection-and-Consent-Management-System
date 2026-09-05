@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 WORKDIR /app
 
@@ -19,4 +19,6 @@ RUN mkdir -p /app/keystore
 
 EXPOSE 5000
 
-CMD ["python", "run.py"]
+# Production WSGI server. PORT is provided by the host (defaults to 5000).
+ENV PORT=5000
+CMD ["sh", "-c", "gunicorn run:app --bind 0.0.0.0:${PORT} --workers 2 --timeout 120"]

@@ -104,12 +104,25 @@ class TestingConfig(BaseConfig):
 
 
 class ProductionConfig(BaseConfig):
-    """Production environment configuration."""
+    """Production environment configuration.
+
+    All secrets MUST come from the environment. The JWT scheme stays HS256
+    (symmetric) to match the implementation, which signs/verifies with
+    JWT_SECRET_KEY — do NOT switch to RS256 without adding an RSA key pair.
+    """
 
     DEBUG = False
     TESTING = False
-    JWT_ALGORITHM = "RS256"
+    JWT_ALGORITHM = "HS256"
     BCRYPT_COST_FACTOR = 12
+
+    # Encryption key MUST be provided in production (no dev fallback).
+    # If unset, encryption/decryption of stored PII would silently fail,
+    # so we surface it loudly at startup instead.
+    ENCRYPTION_KEY = os.environ.get("ENCRYPTION_KEY", "")
+
+    # Production Mongo DB name (Atlas). Falls back to base default if unset.
+    MONGO_DB_NAME = os.environ.get("MONGO_DB_NAME", "dpdp_healthcare")
 
 
 _config_map = {

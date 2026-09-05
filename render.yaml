@@ -1,0 +1,40 @@
+# Render Blueprint — provisions the Flask backend as a web service.
+# Import this repo at https://dashboard.render.com/ (New + > Blueprint).
+# Secret values (sync: false) are entered in the Render dashboard, never here.
+
+services:
+  - type: web
+    name: dpdp-backend
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn run:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    healthCheckPath: /health
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: PYTHON_VERSION
+        value: "3.13.4"
+      # ── Secrets: set these in the Render dashboard (sync:false) ──
+      - key: MONGO_URI          # your MongoDB Atlas connection string
+        sync: false
+      - key: MONGO_DB_NAME
+        value: dpdp_healthcare
+      - key: SECRET_KEY
+        generateValue: true      # Render generates a strong random value
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: ENCRYPTION_KEY      # MUST match the key used to seed data
+        sync: false
+      - key: CORS_ORIGINS        # your Vercel frontend URL(s), comma-separated
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      # ── Optional: real Sepolia anchoring ──
+      - key: BLOCKCHAIN_NETWORK
+        value: ganache           # set to "sepolia" to enable public anchoring
+      - key: SEPOLIA_RPC_URL
+        sync: false
+      - key: SEPOLIA_PRIVATE_KEY
+        sync: false
