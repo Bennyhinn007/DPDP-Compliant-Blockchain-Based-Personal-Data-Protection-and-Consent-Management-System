@@ -1,206 +1,286 @@
-# DPDP-Compliant Redactable Blockchain Based Healthcare & Pharmacy Management System
+<div align="center">
 
-[![CI](https://github.com/Bennyhinn007/DPDP-Compliant-Blockchain-Based-Personal-Data-Protection-and-Consent-Management-System/actions/workflows/ci.yml/badge.svg)](https://github.com/Bennyhinn007/DPDP-Compliant-Blockchain-Based-Personal-Data-Protection-and-Consent-Management-System/actions/workflows/ci.yml)
+<img src="docs/assets/logo.png" alt="DPDP Health logo" width="130" />
 
-> A production-grade healthcare platform demonstrating compliance with India's Digital Personal Data Protection Act (DPDP Act, 2023) through privacy-first design, consent management, AES-256 encryption, blockchain verification, and Chameleon Hash-based authorized redaction.
+# DPDP-Compliant Redactable Blockchain Healthcare Platform
+
+<a href="https://git.io/typing-svg">
+  <img src="https://readme-typing-svg.demolab.com?font=Inter&weight=600&size=22&pause=1000&color=6366F1&center=true&vCenter=true&width=820&lines=Real+Chameleon-Hash+Redactable+Blockchain;India's+DPDP+Act+%E2%80%94+Privacy+by+Design;RFID+Step-Up+Auth+%2B+AES-256+%2B+Consent+Management;Correct+%26+Erase+data+without+breaking+the+chain" alt="Typing SVG" />
+</a>
+
+<p>
+  <em>A production-grade healthcare platform that reconciles blockchain immutability with the
+  right to correction &amp; erasure — using <strong>genuine cryptographic chameleon hashing</strong>,
+  not a simulation.</em>
+</p>
+
+<p>
+  <a href="https://github.com/Bennyhinn007/DPDP-Compliant-Blockchain-Based-Personal-Data-Protection-and-Consent-Management-System/actions/workflows/ci.yml">
+    <img src="https://github.com/Bennyhinn007/DPDP-Compliant-Blockchain-Based-Personal-Data-Protection-and-Consent-Management-System/actions/workflows/ci.yml/badge.svg" alt="CI" />
+  </a>
+  <img src="https://img.shields.io/badge/tests-164%20passing-16A34A?logo=pytest&logoColor=white" alt="Tests" />
+  <img src="https://img.shields.io/badge/DPDP%20Act-2023-6366F1" alt="DPDP" />
+  <img src="https://img.shields.io/badge/license-Academic-475569" alt="License" />
+</p>
+
+<p>
+  <img src="https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black" />
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white" />
+  <img src="https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/Flask-3-000000?logo=flask&logoColor=white" />
+  <img src="https://img.shields.io/badge/MongoDB-7-47A248?logo=mongodb&logoColor=white" />
+  <img src="https://img.shields.io/badge/Ethereum-Sepolia-3C3C3D?logo=ethereum&logoColor=white" />
+  <img src="https://img.shields.io/badge/ESP32-RFID-E7352C?logo=espressif&logoColor=white" />
+</p>
+
+</div>
 
 ---
 
-## Architecture
+## ✨ Why this project is different
+
+> Traditional blockchains are **immutable** — great for integrity, but in direct conflict with the DPDP Act's **right to correction and erasure**. This platform resolves that tension with a **real discrete-log chameleon hash**: authorized edits produce a trapdoor *collision*, so the record content changes while its on-chain anchor stays valid. Unauthorized edits still break verification.
+
+<div align="center">
+
+| 🔐 Real Crypto | 🩺 DPDP-Native | 🪪 Hardware Auth | ⛓️ Verifiable |
+|:---:|:---:|:---:|:---:|
+| 1536-bit chameleon hash with genuine trapdoor collisions | Consent, correction & erasure mapped to DPDP sections | ESP32 + RC522 RFID physical-presence step-up | Real Sepolia testnet anchoring with explorer links |
+
+</div>
+
+---
+
+## 🚀 Feature Highlights
+
+| Feature | What it does |
+|---------|--------------|
+| 🦎 **Real Chameleon Hashing** | `CH(m,r) = g^m·y^r mod p` — authorized redaction via trapdoor collision, benchmarked |
+| 🪪 **RFID Physical-Presence Auth** | Sensitive/DPO actions require a real ESP32 card tap (something you *physically have*) |
+| 🔑 **Google OAuth 2.0** | Passwordless sign-in alongside email/password |
+| 🧬 **Record Lifecycle Story** | Animated timeline: created → anchored → corrected → erased, with the collision proof |
+| 🎯 **Live Tamper-Attempt Demo** | Side-by-side: unauthorized edit fails (red) vs lawful chameleon edit verifies (green) |
+| 🔒 **AES-256 Field Encryption** | Fernet field-level encryption; MongoDB stores ciphertext only |
+| ⛓️ **Blockchain Anchoring** | SHA-256 hashes on Ganache **or** public Sepolia testnet |
+| 📜 **Consent Management** | 6 consent types with blockchain-anchored receipts |
+| 🕵️ **Immutable Audit Trail** | Hash-chained logs; physical taps and redactions recorded |
+| 📊 **Compliance Scoring** | Real-time DPDP compliance score (0–100) |
+
+---
+
+## 🏗️ Architecture
 
 ```mermaid
 graph TB
-    subgraph "Client Layer"
-        FE[React + TypeScript + Tailwind CSS]
+    subgraph Client["🖥️ Client"]
+        FE[React + TypeScript + Tailwind]
+        RFID[🪪 ESP32 RFID Terminal]
     end
-    
-    subgraph "API Gateway"
-        RL[Rate Limiter]
+    subgraph Gateway["🚪 API Gateway"]
         JWT[JWT Validator]
-        RBAC[RBAC Engine]
+        RBAC[RBAC + Consent Engine]
+        PRES[Physical-Presence Gate]
     end
-    
-    subgraph "Application Layer - Flask"
-        AUTH[Auth Service]
+    subgraph App["⚙️ Application - Flask"]
+        AUTH[Auth / OAuth]
         PAT[Patient Service]
         CON[Consent Service]
-        DOC[Doctor Service]
-        AUD[Audit Service]
         ENC[Encryption Service]
         BC[Blockchain Service]
-        CH[Chameleon Hash Engine]
+        CH[🦎 Chameleon Hash Engine]
         COMP[Compliance Service]
     end
-    
-    subgraph "Data Layer"
-        MONGO[(MongoDB - Encrypted)]
-        GANACHE[Ganache - Ethereum]
+    subgraph Data["🗄️ Data & Chain"]
+        MONGO[(MongoDB · Encrypted)]
+        CHAIN[Ganache / Sepolia]
         KEYS[Key Store]
     end
-    
-    FE --> RL --> JWT --> RBAC
-    RBAC --> AUTH & PAT & CON & DOC & AUD & BC & COMP
+    FE --> JWT --> RBAC
+    RFID --> PRES --> RBAC
+    RBAC --> AUTH & PAT & CON & COMP
     PAT --> ENC --> MONGO
-    BC --> GANACHE
-    CH --> BC
+    CH --> BC --> CHAIN
     ENC --> KEYS
 ```
 
-## Key Features
+---
 
-| Feature | Implementation |
-|---------|---------------|
-| **DPDP Consent Management** | 6 consent types with blockchain-anchored receipts |
-| **AES-256 Encryption** | Field-level Fernet encryption for all PII |
-| **Blockchain Anchoring** | SHA-256 hashes stored on Ganache (Ethereum) |
-| **Chameleon Hashing** | Authorized redaction preserving chain validity |
-| **Right to Correction** | Version-preserved corrections with proof chain |
-| **Right to Erasure** | Field redaction with blockchain proof |
-| **Consent-Gated Access** | Doctor access requires active patient consent |
-| **Immutable Audit Trail** | Hash-chained, blockchain-anchored logs |
-| **Compliance Scoring** | Real-time DPDP compliance score (0-100) |
-| **Integrity Verification** | On-demand blockchain hash comparison |
+## 📈 Chameleon Hash Benchmarks
 
-## Technology Stack
+Real measured performance of the 1536-bit scheme (see [`backend/benchmarks`](backend/benchmarks)):
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 18, TypeScript, Vite, Tailwind CSS, Shadcn UI, TanStack Query, Recharts, Framer Motion |
-| Backend | Flask 3, Python 3.11 |
-| Database | MongoDB 7 |
-| Blockchain | Ethereum (Ganache), Web3.py |
-| Encryption | AES-256-GCM (Fernet / cryptography) |
-| Auth | JWT (PyJWT), bcrypt |
-| Documentation | Swagger/OpenAPI (Flasgger) |
+<div align="center">
+  <img src="docs/assets/chameleon_benchmark.png" alt="Chameleon hash benchmark" width="640" />
+</div>
 
-## Quick Start
+| Operation | Mean time | Note |
+|-----------|-----------|------|
+| Key generation | ~9 ms | one-time setup |
+| Hash `CH(m,r)` | ~13 ms | size-independent (SHA-256 pre-compression) |
+| Verify | ~13 ms | — |
+| **Collision (authorized redaction)** | **~0.25 ms** | **~50× faster than hashing, constant regardless of record size** |
 
-### Prerequisites
+> Reproduce: `python -m benchmarks.benchmark_chameleon --iterations 100`
 
-- Python 3.11+
-- Node.js 20+
-- MongoDB 7.x (running on localhost:27017)
-- Ganache (optional, for blockchain features)
+---
 
-### Setup
+## 🛠️ Tech Stack
+
+<div align="center">
+
+**Frontend** · React 18 · TypeScript · Vite · Tailwind CSS · TanStack Query · Recharts · Framer Motion
+**Backend** · Flask 3 · Python 3.13 · PyJWT · bcrypt · google-auth
+**Data** · MongoDB 7 · AES-256 (Fernet)
+**Chain** · Web3.py · Ganache / Ethereum Sepolia
+**Hardware** · ESP32 · RC522 RFID
+**Quality** · pytest + mongomock (164 tests) · GitHub Actions CI
+
+</div>
+
+---
+
+## ⚡ Quick Start
+
+<details open>
+<summary><strong>Local setup (backend + frontend)</strong></summary>
 
 ```bash
 # Clone
-git clone <repository-url>
+git clone https://github.com/Bennyhinn007/DPDP-Compliant-Blockchain-Based-Personal-Data-Protection-and-Consent-Management-System.git
 cd dpdp_kiro
 
-# Backend
+# ── Backend (API on :5000) ──
 cd backend
 python -m venv venv
-venv\Scripts\activate          # Windows
+venv\Scripts\activate           # Windows  (source venv/bin/activate on macOS/Linux)
 pip install -r requirements.txt
-python -m app.db_init          # Initialize MongoDB collections
-python seeds/seed_demo.py      # Seed demo data
-python run.py                  # Start API on :5000
+cp .env.example .env            # then fill in your values
+python -m app.db_init           # initialize MongoDB collections
+python seeds/seed_demo.py       # seed demo data
+python run.py                   # start API
 
-# Frontend (new terminal)
+# ── Frontend (UI on :5173) ──  (new terminal)
 cd frontend
 npm install
-npm run dev                    # Start UI on :5173
+cp .env.example .env            # optional: add VITE_GOOGLE_CLIENT_ID
+npm run dev
 ```
+</details>
 
-### Docker (Alternative)
+<details>
+<summary><strong>Docker</strong></summary>
 
 ```bash
 docker-compose up --build
 ```
+</details>
 
-## Demo Credentials
+<details>
+<summary><strong>Run the test suite (no MongoDB required)</strong></summary>
+
+The suite is fully self-contained via in-memory `mongomock` — one command, zero external services:
+
+```bash
+cd backend
+pytest -q          # 164 passed, 1 skipped
+```
+</details>
+
+---
+
+## 🔑 Demo Credentials
 
 | Email | Password | Role |
 |-------|----------|------|
-| `admin@dpdp-health.in` | `Admin@Secure123` | Admin/DPO |
+| `admin@dpdp-health.in` | `Admin@Secure123` | Admin / DPO |
 | `rajesh.kumar@gmail.com` | `Patient@123` | Patient |
 | `priya.sharma@gmail.com` | `Patient@456` | Patient |
-| `amit.patel@gmail.com` | `Patient@789` | Patient |
 
-## API Documentation
+> **API docs:** Swagger UI at `http://localhost:5000/api/docs/` · Health at `/health`
 
-After starting the backend:
-- **Swagger UI**: http://localhost:5000/api/docs/
-- **Health Check**: http://localhost:5000/health
+---
 
-## API Endpoints
+## 🧪 Key API Endpoints
+
+<details>
+<summary><strong>Expand endpoint reference</strong></summary>
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| POST | `/api/v1/auth/register` | — | Register (patient/doctor/admin) |
 | POST | `/api/v1/auth/login` | — | Login → JWT |
-| GET | `/api/v1/patients/me` | Patient | Own profile |
+| POST | `/api/v1/auth/google` | — | Google OAuth login |
+| POST | `/api/v1/auth/rfid-verify` | — | Verify an RFID card tap |
 | GET | `/api/v1/patients/me/records` | Patient | Own health records |
-| POST | `/api/v1/patients/me/records/:id/correct` | Patient | Correct record (DPDP) |
-| POST | `/api/v1/patients/me/records/:id/erase` | Patient | Erase record (DPDP) |
-| POST | `/api/v1/consents/grant` | Patient | Grant consent |
-| POST | `/api/v1/consents/:id/withdraw` | Patient | Withdraw consent |
-| GET | `/api/v1/doctors/patients/search` | Doctor | Search patients |
-| GET | `/api/v1/doctors/patients/:id/records` | Doctor | Consent-gated access |
+| POST | `/api/v1/patients/me/records/:id/correct` | Patient | Correct record (DPDP §12) |
+| POST | `/api/v1/patients/me/records/:id/erase` | Patient | Erase record (RFID-gated) |
+| GET | `/api/v1/patients/me/records/:id/lifecycle` | Patient | Record Lifecycle Story |
+| POST | `/api/v1/integrity/tamper-demo` | Patient | Live tamper-attempt demo |
 | GET | `/api/v1/integrity/record/:id` | Patient | Verify record integrity |
-| GET | `/api/v1/audit/timeline` | Patient | Audit event timeline |
+| POST | `/api/v1/consents/grant` | Patient | Grant consent |
 | GET | `/api/v1/compliance/compliance-score` | Admin | DPDP compliance score |
 
-## Project Structure
+</details>
+
+---
+
+## ⚖️ DPDP Act Compliance Mapping
+
+| DPDP Section | Right / Obligation | Implementation |
+|---|---|---|
+| §5–6 | Consent | 6 consent types, receipts, blockchain-anchored |
+| §11 | Right to Access | Personal Data Center + data export |
+| §12 | Right to Correction | Chameleon-hash correction workflow |
+| §12 | Right to Erasure | Chameleon-hash redaction (RFID-gated) |
+| §8(4) | Security Safeguards | AES-256, RBAC, physical-presence auth |
+| §8(6) | Breach Notification | Severity-tagged audit trail |
+
+See the full [**Threat Model & Security Analysis**](docs/threat-model.md).
+
+---
+
+## 🔬 Research Contribution
+
+A novel architecture combining:
+
+1. **Real chameleon-hash functions** for authorized, verifiable blockchain redaction
+2. **DPDP-native** blockchain-verified consent management
+3. **Dual integrity model** — hash chain **+** blockchain anchoring
+4. **Consent-augmented RBAC** — role permissions **+** purpose-limited consent
+5. **Hardware step-up auth** — RFID physical presence for irreversible actions
+
+The system makes an abstract cryptographic idea *tangible*: evaluators watch a record get lawfully corrected while its blockchain anchor stays valid — and watch an unauthorized tamper get caught.
+
+---
+
+## 📁 Project Structure
 
 ```
 dpdp_kiro/
 ├── backend/
 │   ├── app/
-│   │   ├── blueprints/        # API routes (auth, patients, consents, doctors, audit, blockchain, integrity, compliance)
-│   │   ├── services/          # Business logic (9 services)
-│   │   ├── middleware/        # JWT, RBAC, audit decorators
-│   │   ├── utils/             # Helpers, constants, errors
-│   │   └── swagger_config.py  # API documentation
-│   ├── seeds/                 # Demo data generator
-│   ├── tests/                 # 80+ automated tests
-│   └── requirements.txt
+│   │   ├── blueprints/     # API routes (auth, patients, consents, integrity, blockchain, …)
+│   │   ├── services/       # Business logic (chameleon_crypto, blockchain, encryption, …)
+│   │   ├── middleware/     # JWT, RBAC, audit, physical-presence
+│   │   └── utils/
+│   ├── benchmarks/         # Chameleon-hash benchmark harness + results
+│   ├── seeds/              # Demo data + RFID card enrollment
+│   └── tests/              # 164 self-contained tests (mongomock)
 ├── frontend/
-│   ├── src/
-│   │   ├── pages/             # 10 feature pages
-│   │   ├── components/        # Reusable UI (cards, badges, gauges, timelines)
-│   │   ├── services/          # API client layer
-│   │   ├── contexts/          # Auth + Query providers
-│   │   └── layouts/           # AppShell with role-based navigation
-│   └── package.json
-├── docker-compose.yml
-└── .kiro/specs/               # Design documentation (requirements, architecture, security, blockchain, compliance)
+│   └── src/
+│       ├── pages/          # Feature pages by role
+│       ├── components/     # UI + shared (LifecycleStory, TamperDemo, PageHero, …)
+│       └── services/       # API client layer
+├── hardware/               # ESP32 + RC522 RFID terminal firmware
+├── docs/                   # Threat model, demo script, assets
+└── .github/workflows/      # CI pipeline
 ```
 
-## Testing
+---
 
-```bash
-cd backend
-python -m pytest tests/ -v     # Run all tests
-python -m pytest tests/ -q     # Quick summary
-```
+<div align="center">
 
-**Test Coverage**: 80+ automated tests covering auth, encryption, blockchain, consents, audit, compliance, and chameleon hash integration.
+**Built to prove that privacy rights and blockchain integrity can coexist.**
 
-## Research Contribution
+<sub>Academic Project — All Rights Reserved · India 🇮🇳 · DPDP Act 2023</sub>
 
-This system demonstrates a novel architecture combining:
-
-1. **Chameleon Hash Functions** for authorized blockchain modifications
-2. **DPDP Act Compliance** with blockchain-verified consent management
-3. **Dual Integrity Model** — hash chain + blockchain anchoring
-4. **Consent-Augmented RBAC** — role permissions + purpose-limited consent
-
-The Chameleon Hash simulation allows evaluators to visualize how traditional blockchain immutability conflicts with data protection rights, and how authorized hash collisions resolve this tension.
-
-## DPDP Act Compliance
-
-| DPDP Section | Right/Obligation | Implementation |
-|---|---|---|
-| Section 5-6 | Consent | 6 consent types, receipts, blockchain-anchored |
-| Section 11 | Right to Access | Personal Data Center, data export |
-| Section 12 | Right to Correction | Chameleon hash correction workflow |
-| Section 12 | Right to Erasure | Chameleon hash redaction workflow |
-| Section 8(4) | Security Safeguards | AES-256, RBAC, audit logging |
-| Section 8(6) | Breach Notification | Audit trail with severity levels |
-
-## License
-
-Academic Project — All Rights Reserved.
+</div>
