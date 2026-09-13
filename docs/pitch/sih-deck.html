@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>SIH 2026 — Cyber Samurai's — PS 26125</title>
+<style>
+  :root{
+    --blue:#1F6FB2; --blue-d:#155081; --navy:#1a3a5c;
+    --indigo:#6366F1; --indigo-d:#4338CA; --indigo-l:#EEF2FF;
+    --ink:#111827; --slate:#374151; --muted:#6B7280; --line:#D9E2EC;
+    --soft:#F5F8FB; --green:#16A34A; --amber:#C2740C; --red:#DC2626;
+    --footer:#2C7BB6;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{font-family:Arial,Helvetica,"Segoe UI",sans-serif; color:var(--ink); background:#334155;}
+  .slide{
+    position:relative; width:297mm; height:167mm; background:#fff;
+    margin:8mm auto; padding:10mm 12mm 14mm; overflow:hidden;
+    box-shadow:0 6px 24px rgba(0,0,0,.35);
+  }
+  @page{ size:A4 landscape; margin:0; }
+  @media print{
+    html,body{background:#fff;}
+    .slide{ margin:0; box-shadow:none; page-break-after:always; width:297mm; height:209.5mm; padding:12mm 14mm 16mm; }
+    .slide:last-child{ page-break-after:auto; }
+  }
+
+  /* ── Template chrome ── */
+  .team-oval{
+    position:absolute; top:9mm; left:12mm; width:70px; height:46px;
+    border:1.5px solid #7C4DA0; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; text-align:center;
+    font-size:10px; font-weight:700; color:#333; line-height:1.15;
+  }
+  .sih-logo{ position:absolute; top:7mm; right:12mm; display:flex; align-items:center; gap:8px; }
+  .sih-logo .txt{ font-family:Arial,sans-serif; font-weight:800; line-height:1; }
+  .sih-logo .txt .l1{ font-size:12px; color:#E8791A; letter-spacing:.5px; }
+  .sih-logo .txt .l2{ font-size:12px; color:#1F6FB2; letter-spacing:.5px; }
+  .sih-logo .txt .l3{ font-size:12px; color:#1F6FB2; letter-spacing:.5px; }
+  .title-serif{
+    text-align:center; font-family:"Times New Roman",Georgia,serif; font-weight:700;
+    font-size:34px; color:#000; letter-spacing:.5px; padding-top:2mm;
+  }
+  .footer-bar{
+    position:absolute; left:0; right:0; bottom:0; height:9mm; background:var(--footer);
+    display:flex; align-items:center; justify-content:center; color:#fff; font-size:11px;
+  }
+  .footer-bar .pg{ position:absolute; right:12mm; font-weight:700; }
+  .content{ margin-top:8mm; }
+
+  /* ── Content components ── */
+  .cols{display:grid; gap:9px;}
+  .c3{grid-template-columns:repeat(3,1fr);} .c2{grid-template-columns:1fr 1fr;} .c4{grid-template-columns:repeat(4,1fr);}
+  .card{border:1px solid var(--line); border-radius:10px; padding:10px 12px; background:var(--soft);}
+  .card h3{font-size:12.5px; color:var(--blue-d); margin-bottom:6px; display:flex; align-items:center; gap:6px;}
+  .card.k h3{color:var(--green);} .card.p h3{color:var(--amber);} .card.d h3{color:var(--red);}
+  .card ul{list-style:none;} .card li{font-size:11px; color:var(--slate); line-height:1.45; padding-left:13px; position:relative; margin-bottom:4px;}
+  .card li::before{content:"▪"; color:var(--blue); position:absolute; left:0;}
+  .card li b{color:var(--ink);}
+  .pill{display:inline-block; background:var(--indigo-l); color:var(--indigo-d); font-size:9.5px; font-weight:700; padding:3px 9px; border-radius:20px; margin:2px 3px 2px 0;}
+  .metric{font-size:24px; font-weight:800; color:var(--blue);}
+  .metric span{font-size:10.5px; color:var(--muted); font-weight:500;}
+  .legend{font-size:9px; color:var(--muted); margin-top:5px; line-height:1.4;}
+  .kbd{font-family:Consolas,monospace; background:#0f172a; color:#a5b4fc; padding:1px 6px; border-radius:5px; font-size:10px;}
+  a{color:var(--blue-d); text-decoration:none;}
+
+  /* Title page */
+  .tp-wrap{display:flex; align-items:center; justify-content:space-between; margin-top:10mm; gap:20px;}
+  .tp-list{list-style:none; font-size:16px; line-height:1;}
+  .tp-list li{margin-bottom:20px; font-weight:700; color:#000;}
+  .tp-list li span{color:var(--blue-d);}
+  .tp-hero{flex-shrink:0;}
+</style>
+</head>
+<body>
+
+<!-- ══════════ SLIDE 1 — TITLE PAGE ══════════ -->
+<section class="slide">
+  <div class="sih-logo">
+    <svg width="52" height="52" viewBox="0 0 100 100">
+      <!-- brain-bulb: left orange, right green -->
+      <path d="M48,20 C34,18 26,28 28,40 C20,44 22,58 32,60 C33,70 44,72 48,66 Z" fill="#E8791A"/>
+      <path d="M52,20 C66,18 74,28 72,40 C80,44 78,58 68,60 C67,70 56,72 52,66 Z" fill="#1F9D45"/>
+      <rect x="44" y="70" width="12" height="7" rx="2" fill="#5A6B7B"/>
+      <rect x="45" y="79" width="10" height="4" rx="2" fill="#5A6B7B"/>
+      <text x="50" y="66" text-anchor="middle" font-size="8" font-weight="800" fill="#fff" font-family="Arial">SIH</text>
+    </svg>
+    <div class="txt"><div class="l1">SMART INDIA</div><div class="l2">HACKATHON</div><div class="l3">2026</div></div>
+  </div>
+
+  <div class="title-serif" style="margin-top:14mm;">SMART INDIA HACKATHON 2026</div>
+  <div style="text-align:center; font-family:'Times New Roman',serif; font-weight:700; font-size:20px; margin-top:6mm; color:#000;">TITLE PAGE</div>
+
+  <div class="tp-wrap">
+    <ul class="tp-list">
+      <li><span>Problem Statement ID –</span> 26125</li>
+      <li><span>Problem Statement Title -</span> Blockchain-Based Secure Platform for Identity, Access Control, and Digital Asset Management</li>
+      <li><span>Theme -</span> Blockchain &amp; Cybersecurity</li>
+      <li><span>PS Category -</span> Software</li>
+      <li><span>Team ID -</span> [Team ID]</li>
+      <li><span>Team Name -</span> Cyber Samurai's</li>
+    </ul>
+    <div class="tp-hero">
+      <img src="logo.png" alt="team logo" style="width:150px; height:150px; object-fit:contain; border-radius:18px;"/>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ SLIDE 2 — IDEA TITLE ══════════ -->
+<section class="slide">
+  <div class="team-oval">Cyber<br/>Samurai's</div>
+  <div class="sih-logo">
+    <svg width="46" height="46" viewBox="0 0 100 100"><path d="M48,20 C34,18 26,28 28,40 C20,44 22,58 32,60 C33,70 44,72 48,66 Z" fill="#E8791A"/><path d="M52,20 C66,18 74,28 72,40 C80,44 78,58 68,60 C67,70 56,72 52,66 Z" fill="#1F9D45"/><rect x="44" y="70" width="12" height="7" rx="2" fill="#5A6B7B"/><rect x="45" y="79" width="10" height="4" rx="2" fill="#5A6B7B"/><text x="50" y="66" text-anchor="middle" font-size="8" font-weight="800" fill="#fff">SIH</text></svg>
+    <div class="txt"><div class="l1">SMART INDIA</div><div class="l2">HACKATHON</div><div class="l3">2026</div></div>
+  </div>
+  <div class="title-serif">IDEA TITLE</div>
+
+  <div class="content">
+    <div style="font-size:15px; font-weight:800; color:var(--blue-d); border-bottom:2px solid var(--blue-d); display:inline-block; padding-bottom:2px; margin-bottom:8px;">
+      ❖ Decentralized Identity, Access &amp; Digital-Asset Platform on a Redactable Blockchain
+    </div>
+    <div class="cols c3">
+      <div class="card">
+        <h3>💡 Proposed Solution</h3>
+        <ul>
+          <li>Unifies <b>decentralized identity (DID)</b>, <b>role-based access</b> and <b>NFT-based asset ownership</b> into one trustless platform.</li>
+          <li>Every identity, permission, mint &amp; transfer is <b>immutably recorded on-chain</b>.</li>
+          <li>Hardened with <b>RFID physical-presence auth</b> + <b>AES-256</b> encryption.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>🎯 How it addresses the problem</h3>
+        <ul>
+          <li>Removes the <b>single point of failure</b> of centralized IAM.</li>
+          <li>Cryptographic IDs stop <b>identity theft &amp; unauthorized access</b>.</li>
+          <li>Smart contracts govern <b>who can mint / allocate / transfer</b> assets.</li>
+          <li>On-chain trail makes ownership &amp; access <b>verifiable &amp; tamper-evident</b>.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>⭐ Innovation &amp; Uniqueness</h3>
+        <ul>
+          <li><b>Real chameleon-hash</b> redaction — lawful correction without breaking the chain (genuine crypto, not a simulation).</li>
+          <li><b>Hardware step-up auth</b> — ESP32 + RFID for privileged actions.</li>
+          <li><b>Consent-augmented RBAC</b> — role + purpose-limited access.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-bar">@SIH Idea submission - Cyber Samurai's<span class="pg">2</span></div>
+</section>
+
+<!-- ══════════ SLIDE 3 — TECHNICAL APPROACH ══════════ -->
+<section class="slide">
+  <div class="team-oval">Cyber<br/>Samurai's</div>
+  <div class="sih-logo">
+    <svg width="46" height="46" viewBox="0 0 100 100"><path d="M48,20 C34,18 26,28 28,40 C20,44 22,58 32,60 C33,70 44,72 48,66 Z" fill="#E8791A"/><path d="M52,20 C66,18 74,28 72,40 C80,44 78,58 68,60 C67,70 56,72 52,66 Z" fill="#1F9D45"/><rect x="44" y="70" width="12" height="7" rx="2" fill="#5A6B7B"/><rect x="45" y="79" width="10" height="4" rx="2" fill="#5A6B7B"/><text x="50" y="66" text-anchor="middle" font-size="8" font-weight="800" fill="#fff">SIH</text></svg>
+    <div class="txt"><div class="l1">SMART INDIA</div><div class="l2">HACKATHON</div><div class="l3">2026</div></div>
+  </div>
+  <div class="title-serif">TECHNICAL APPROACH</div>
+
+  <div class="content">
+    <div style="margin-bottom:7px;">
+      <span class="pill">React + TypeScript</span><span class="pill">Flask · Python 3.13</span><span class="pill">MongoDB (AES-256)</span>
+      <span class="pill">Web3.py · Ethereum Sepolia</span><span class="pill">Solidity / ERC-721*</span>
+      <span class="pill">JWT + bcrypt</span><span class="pill">ESP32 + RC522 RFID</span><span class="pill">Docker · CI</span>
+    </div>
+
+    <div class="card" style="padding:6px;">
+      <svg viewBox="0 0 1120 210" width="100%" height="196" font-family="Arial,sans-serif">
+        <defs>
+          <marker id="arw" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#1F6FB2"/></marker>
+          <style>
+            .lbl{font-size:12px; fill:#111827; font-weight:700;} .sub{font-size:9px; fill:#475569;}
+            .flow{stroke:#1F6FB2; stroke-width:1.6; fill:none; marker-end:url(#arw);}
+          </style>
+        </defs>
+        <!-- row 1 -->
+        <rect x="8"   y="14" width="150" height="50" rx="9" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.4"/>
+        <text class="lbl" x="83" y="35" text-anchor="middle">User + DID</text><text class="sub" x="83" y="50" text-anchor="middle">verifiable identity</text>
+        <rect x="196" y="14" width="158" height="50" rx="9" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.4"/>
+        <text class="lbl" x="275" y="35" text-anchor="middle">RFID Step-Up Auth</text><text class="sub" x="275" y="50" text-anchor="middle">physical presence · ESP32</text>
+        <rect x="392" y="14" width="168" height="50" rx="9" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.4"/>
+        <text class="lbl" x="476" y="35" text-anchor="middle">RBAC + Consent</text><text class="sub" x="476" y="50" text-anchor="middle">role + purpose check</text>
+        <rect x="598" y="14" width="176" height="50" rx="9" fill="#fef3c7" stroke="#C2740C" stroke-width="1.4"/>
+        <text class="lbl" x="686" y="35" text-anchor="middle">Smart Contract*</text><text class="sub" x="686" y="50" text-anchor="middle">mint / allocate / transfer</text>
+        <rect x="812" y="14" width="168" height="50" rx="9" fill="#fef3c7" stroke="#C2740C" stroke-width="1.4"/>
+        <text class="lbl" x="896" y="35" text-anchor="middle">NFT Asset*</text><text class="sub" x="896" y="50" text-anchor="middle">unique · identity-linked</text>
+        <path class="flow" d="M158,39 L194,39"/><path class="flow" d="M354,39 L390,39"/><path class="flow" d="M560,39 L596,39"/><path class="flow" d="M774,39 L810,39"/>
+        <path class="flow" d="M896,64 L896,96"/>
+        <!-- row 2 (right→left) -->
+        <rect x="812" y="98" width="168" height="50" rx="9" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.4"/>
+        <text class="lbl" x="896" y="119" text-anchor="middle">Blockchain Anchor</text><text class="sub" x="896" y="134" text-anchor="middle">SHA-256 · Sepolia</text>
+        <rect x="598" y="98" width="176" height="50" rx="9" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.4"/>
+        <text class="lbl" x="686" y="119" text-anchor="middle">Immutable Audit</text><text class="sub" x="686" y="134" text-anchor="middle">hash-chained log</text>
+        <rect x="360" y="98" width="200" height="50" rx="9" fill="#dcfce7" stroke="#16A34A" stroke-width="1.4"/>
+        <text class="lbl" x="460" y="119" text-anchor="middle">Chameleon-Hash Redaction</text><text class="sub" x="460" y="134" text-anchor="middle">lawful edit, chain stays valid</text>
+        <rect x="150" y="98" width="184" height="50" rx="9" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.4"/>
+        <text class="lbl" x="242" y="119" text-anchor="middle">Verify &amp; Explorer</text><text class="sub" x="242" y="134" text-anchor="middle">tamper detection · proof</text>
+        <path class="flow" d="M812,123 L776,123"/><path class="flow" d="M598,123 L562,123"/><path class="flow" d="M360,123 L336,123"/>
+        <!-- legend -->
+        <rect x="8" y="170" width="13" height="13" rx="3" fill="#dcfce7" stroke="#16A34A"/><text class="sub" x="26" y="180">Built &amp; benchmarked</text>
+        <rect x="180" y="170" width="13" height="13" rx="3" fill="#fef3c7" stroke="#C2740C"/><text class="sub" x="198" y="180">* Architected — Phase 2 (NFT / smart-contract layer)</text>
+        <rect x="530" y="170" width="13" height="13" rx="3" fill="#EEF2FF" stroke="#6366F1"/><text class="sub" x="548" y="180">Core platform (identity · access · anchoring · audit)</text>
+      </svg>
+    </div>
+  </div>
+
+  <div class="footer-bar">@SIH Idea submission - Cyber Samurai's<span class="pg">3</span></div>
+</section>
+
+<!-- ══════════ SLIDE 4 — FEASIBILITY AND VIABILITY ══════════ -->
+<section class="slide">
+  <div class="team-oval">Cyber<br/>Samurai's</div>
+  <div class="sih-logo">
+    <svg width="46" height="46" viewBox="0 0 100 100"><path d="M48,20 C34,18 26,28 28,40 C20,44 22,58 32,60 C33,70 44,72 48,66 Z" fill="#E8791A"/><path d="M52,20 C66,18 74,28 72,40 C80,44 78,58 68,60 C67,70 56,72 52,66 Z" fill="#1F9D45"/><rect x="44" y="70" width="12" height="7" rx="2" fill="#5A6B7B"/><rect x="45" y="79" width="10" height="4" rx="2" fill="#5A6B7B"/><text x="50" y="66" text-anchor="middle" font-size="8" font-weight="800" fill="#fff">SIH</text></svg>
+    <div class="txt"><div class="l1">SMART INDIA</div><div class="l2">HACKATHON</div><div class="l3">2026</div></div>
+  </div>
+  <div class="title-serif">FEASIBILITY AND VIABILITY</div>
+
+  <div class="content">
+    <div class="cols c3">
+      <div class="card"><h3>🛠️ Feasibility of the idea</h3><ul>
+        <li><b>Real</b> 1536-bit discrete-log chameleon hash (RFC 3526)</li>
+        <li><b>164 automated tests</b> pass on every push (CI)</li>
+        <li>Deployable: Render + Vercel + MongoDB Atlas</li>
+        <li>Public verifiability via Ethereum <b>Sepolia</b></li>
+      </ul></div>
+      <div class="card k"><h3>💰 Economic &amp; operational viability</h3><ul>
+        <li>100% <b>open-source</b> stack — no licence cost</li>
+        <li><b>₹0 infrastructure</b> on managed free tiers</li>
+        <li>Testnet anchoring = <b>no gas cost</b> for demo</li>
+        <li>Containerized (Docker) — portable to any cloud</li>
+      </ul></div>
+      <div class="card d"><h3>⚠️ Challenges &amp; mitigation</h3><ul>
+        <li>Trapdoor key safety → <b>HSM / KMS</b> (roadmap)</li>
+        <li>On-chain PII risk → <b>hashes only</b>, never raw data</li>
+        <li>Single-node trust → <b>public Sepolia</b> chain</li>
+        <li>NFT/DID layer → phased, standards-based (ERC-721, W3C DID)</li>
+      </ul></div>
+    </div>
+
+    <div class="card" style="margin-top:9px;">
+      <h3>📈 Measured performance — Chameleon Hash (1536-bit, mean of 100 runs)</h3>
+      <div class="cols c4" style="margin-top:3px; gap:12px;">
+        <div><div class="metric">~0.25<span> ms</span></div><div class="legend"><b>Authorized redaction</b> — ~4,000 ops/sec, constant vs record size</div></div>
+        <div><div class="metric">~13<span> ms</span></div><div class="legend"><b>Hash / Verify</b> — size-independent (SHA-256 pre-compression)</div></div>
+        <div><div class="metric">~9<span> ms</span></div><div class="legend"><b>Key generation</b> — one-time trapdoor setup</div></div>
+        <div><div class="metric">50×<span> faster</span></div><div class="legend"><b>Redaction vs hashing</b> — lawful edits practical at scale</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-bar">@SIH Idea submission - Cyber Samurai's<span class="pg">4</span></div>
+</section>
+
+<!-- ══════════ SLIDE 5 — IMPACT AND BENEFITS ══════════ -->
+<section class="slide">
+  <div class="team-oval">Cyber<br/>Samurai's</div>
+  <div class="sih-logo">
+    <svg width="46" height="46" viewBox="0 0 100 100"><path d="M48,20 C34,18 26,28 28,40 C20,44 22,58 32,60 C33,70 44,72 48,66 Z" fill="#E8791A"/><path d="M52,20 C66,18 74,28 72,40 C80,44 78,58 68,60 C67,70 56,72 52,66 Z" fill="#1F9D45"/><rect x="44" y="70" width="12" height="7" rx="2" fill="#5A6B7B"/><rect x="45" y="79" width="10" height="4" rx="2" fill="#5A6B7B"/><text x="50" y="66" text-anchor="middle" font-size="8" font-weight="800" fill="#fff">SIH</text></svg>
+    <div class="txt"><div class="l1">SMART INDIA</div><div class="l2">HACKATHON</div><div class="l3">2026</div></div>
+  </div>
+  <div class="title-serif">IMPACT AND BENEFITS</div>
+
+  <div class="content">
+    <div class="cols c2">
+      <div class="card"><h3>🌍 Potential impact on target audience</h3><ul>
+        <li><b>Eliminates single point of failure</b> — no central identity DB to breach.</li>
+        <li><b>Tamper-proof ownership</b> — asset &amp; access history is cryptographically verifiable.</li>
+        <li><b>Privacy by design</b> — AES-256 + data-protection rights.</li>
+        <li><b>Trust without intermediaries</b> — smart contracts enforce rules automatically.</li>
+      </ul></div>
+      <div class="card"><h3>👥 Beneficiaries</h3><ul>
+        <li><b>Enterprises</b> — secure workforce identity &amp; access governance.</li>
+        <li><b>Government</b> — asset registries, licences, credential issuance.</li>
+        <li><b>Regulated sectors</b> — auditable, consent-driven records.</li>
+        <li><b>Individuals</b> — self-sovereign identity &amp; provable ownership.</li>
+      </ul></div>
+    </div>
+    <div class="cols c3" style="margin-top:9px;">
+      <div class="card"><h3>🔐 Social benefit</h3><ul><li>User control &amp; data-protection rights</li><li>Transparent, trustable institutions</li><li>Inclusive self-sovereign identity</li></ul></div>
+      <div class="card k"><h3>💹 Economic benefit</h3><ul><li>Cuts fraud &amp; identity-theft losses</li><li>Removes costly central IAM &amp; reconciliation</li><li>Open-source, low deployment cost</li></ul></div>
+      <div class="card p"><h3>🛡️ Security benefit</h3><ul><li>Decentralized cryptographic identity</li><li>Hardware-backed step-up auth</li><li>Immutable, verifiable audit trail</li></ul></div>
+    </div>
+  </div>
+
+  <div class="footer-bar">@SIH Idea submission - Cyber Samurai's<span class="pg">5</span></div>
+</section>
+
+<!-- ══════════ SLIDE 6 — RESEARCH AND REFERENCES ══════════ -->
+<section class="slide">
+  <div class="team-oval">Cyber<br/>Samurai's</div>
+  <div class="sih-logo">
+    <svg width="46" height="46" viewBox="0 0 100 100"><path d="M48,20 C34,18 26,28 28,40 C20,44 22,58 32,60 C33,70 44,72 48,66 Z" fill="#E8791A"/><path d="M52,20 C66,18 74,28 72,40 C80,44 78,58 68,60 C67,70 56,72 52,66 Z" fill="#1F9D45"/><rect x="44" y="70" width="12" height="7" rx="2" fill="#5A6B7B"/><rect x="45" y="79" width="10" height="4" rx="2" fill="#5A6B7B"/><text x="50" y="66" text-anchor="middle" font-size="8" font-weight="800" fill="#fff">SIH</text></svg>
+    <div class="txt"><div class="l1">SMART INDIA</div><div class="l2">HACKATHON</div><div class="l3">2026</div></div>
+  </div>
+  <div class="title-serif">RESEARCH AND REFERENCES</div>
+
+  <div class="content">
+    <div class="cols c2">
+      <div class="card">
+        <h3>📚 References &amp; standards</h3>
+        <ul>
+          <li>Krawczyk &amp; Rabin — <i>Chameleon Hashing &amp; Signatures</i>, NDSS 2000</li>
+          <li>Ateniese et al. — <i>Redactable Blockchain</i>, IEEE EuroS&amp;P 2017</li>
+          <li>W3C — <i>Decentralized Identifiers (DID) v1.0</i></li>
+          <li>Ethereum — <i>ERC-721 Non-Fungible Token Standard</i></li>
+          <li>RFC 3526 — MODP Diffie-Hellman groups (1536-bit)</li>
+          <li>Digital Personal Data Protection Act, 2023 (India)</li>
+        </ul>
+      </div>
+      <div class="card k">
+        <h3>✅ Evidence &amp; project links</h3>
+        <ul>
+          <li>164 automated tests · CI pipeline green</li>
+          <li>Reproducible cryptographic benchmark harness</li>
+          <li>Working ESP32 + RC522 RFID hardware terminal</li>
+          <li>Documented threat model &amp; compliance mapping</li>
+        </ul>
+        <div style="margin-top:8px; font-size:10.5px; line-height:1.6;">
+          <div>🔗 <b>GitHub:</b> <a href="https://github.com/Bennyhinn007/DPDP-Compliant-Blockchain-Based-Personal-Data-Protection-and-Consent-Management-System">github.com/Bennyhinn007/…Consent-Management-System</a></div>
+          <div>🔗 <b>Live demo:</b> <span class="kbd">[deployment link]</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-bar">@SIH Idea submission - Cyber Samurai's<span class="pg">6</span></div>
+</section>
+
+</body>
+</html>
