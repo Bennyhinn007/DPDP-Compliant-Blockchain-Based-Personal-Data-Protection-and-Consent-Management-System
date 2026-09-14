@@ -39,6 +39,7 @@ class ContractService:
         self._chain_id = None
         self._access_addr = ""
         self._registry_addr = ""
+        self._asset_nft_addr = ""
 
         cfg = config
         if cfg is None:
@@ -53,6 +54,7 @@ class ContractService:
             self._private_key = g("SEPOLIA_PRIVATE_KEY", "") or ""
             self._access_addr = g("SIH_ACCESS_CONTROL_ADDRESS", "") or ""
             self._registry_addr = g("SIH_IDENTITY_REGISTRY_ADDRESS", "") or ""
+            self._asset_nft_addr = g("SIH_ASSET_NFT_ADDRESS", "") or ""
             self._chain_id = g("SEPOLIA_CHAIN_ID", None) if self._network == "sepolia" else g("GANACHE_CHAIN_ID", None)
 
         self._account = None
@@ -79,14 +81,21 @@ class ContractService:
         """True only if chain is connected AND both contract addresses are set."""
         return self._is_connected() and bool(self._access_addr) and bool(self._registry_addr)
 
+    @property
+    def nft_available(self) -> bool:
+        """True only if chain is connected AND the AssetNFT + access addresses are set."""
+        return self._is_connected() and bool(self._asset_nft_addr) and bool(self._access_addr)
+
     def status(self) -> dict:
         return {
             "chain_available": self._is_connected(),
             "contracts_configured": bool(self._access_addr and self._registry_addr),
             "available": self.available,
+            "nft_available": self.nft_available,
             "network": self._network,
             "access_control_address": self._access_addr or None,
             "identity_registry_address": self._registry_addr or None,
+            "asset_nft_address": self._asset_nft_addr or None,
         }
 
     # ── ABI / contract loading ──────────────────────────────────────────
@@ -113,6 +122,12 @@ class ContractService:
         if not abi or not self._registry_addr:
             return None
         return self.w3.eth.contract(address=self.w3.to_checksum_address(self._registry_addr), abi=abi)
+
+    def _asset_nft(self):
+        abi = self._load_abi("AssetNFT")
+        if not abi or not self._asset_nft_addr:
+            return None
+        return self.w3.eth.contract(address=self.w3.to_checksum_address(self._asset_nft_addr), abi=abi)
 
     # ── hashing (matches did_service.py + Solidity) ─────────────────────
 
@@ -249,5 +264,124 @@ class ContractService:
             return None
         try:
             return bool(pac.functions.didHasRole(self.did_hash(did), role).call())
+        except Exception:
+            return None
+
+    # ── asset NFT operations (Phase 3) ──────────────────────────────────
+
+    def _send_returning_receipt(self, fn):
+        """Like _send but returns (tx_hash_hex, receipt) for event parsing."""
+        if self._network == "sepolia" and self._private_key:
+            nonce = self.w3.eth.get_transaction_count(self._account)
+            tx = fn.build_transaction({
+                "from": self._account, "nonce": nonce,
+                "chainId": self._chain_id or self.w3.eth.chain_id,
+                "gas": 400000,
+                "maxFeePerGas": self.w3.to_wei(30, "gwei"),
+                "maxPriorityFeePerGas": self.w3.to_wei(2, "gwei"),
+            })
+            signed = self.w3.eth.account.sign_transaction(tx, self._private_key)
+            raw = getattr(signed, "raw_transaction", None) or signed.rawTransaction
+            tx_hash = self.w3.eth.send_raw_transaction(raw)
+        else:
+            tx_hash = fn.transact({"from": self._account})
+        receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
+        return "0x" + receipt.transactionHash.hex(), receipt
+
+    def mint_asset(self, owner_did: str, metadata_hash_hex: str, asset_type: int) -> dict:
+        """Mint an NFT to a DID. Returns {ok, tx_hash, token_id} or {ok:False,reason}."""
+        if not self.nft_available:
+            return {"ok": False, "reason": "chain_or_contracts_unavailable"}
+        nft = self._asset_nft()
+        if nft is None:
+            return {"ok": False, "reason": "asset_nft_not_loaded"}
+        try:
+            fn = nft.functions.mint(self.did_hash(owner_did), self._to_bytes32(metadata_hash_hex), int(asset_type))
+            tx_hash, receipt = self._send_returning_receipt(fn)
+            token_id = None
+            try:
+                logs = nft.events.AssetMinted().process_receipt(receipt)
+                if logs:
+                    token_id = int(logs[0]["args"]["tokenId"])
+            except Exception:
+                pass
+            if token_id is None:
+                try:
+                    token_id = int(nft.functions.totalMinted().call())
+                except Exception:
+                    pass
+            return {"ok": True, "tx_hash": tx_hash, "token_id": token_id}
+        except Exception as e:
+            return {"ok": False, "reason": str(e)[:160]}
+
+    def assign_asset(self, token_id: int, to_did: str) -> dict:
+        if not self.nft_available:
+            return {"ok": False, "reason": "chain_or_contracts_unavailable"}
+        nft = self._asset_nft()
+        if nft is None:
+            return {"ok": False, "reason": "asset_nft_not_loaded"}
+        try:
+            tx = self._send(nft.functions.assign(int(token_id), self.did_hash(to_did)))
+            return {"ok": True, "tx_hash": tx}
+        except Exception as e:
+            return {"ok": False, "reason": str(e)[:160]}
+
+    def transfer_asset(self, token_id: int, to_did: str) -> dict:
+        if not self.nft_available:
+            return {"ok": False, "reason": "chain_or_contracts_unavailable"}
+        nft = self._asset_nft()
+        if nft is None:
+            return {"ok": False, "reason": "asset_nft_not_loaded"}
+        try:
+            tx = self._send(nft.functions.controlledTransfer(int(token_id), self.did_hash(to_did)))
+            return {"ok": True, "tx_hash": tx}
+        except Exception as e:
+            return {"ok": False, "reason": str(e)[:160]}
+
+    def set_asset_status(self, token_id: int, status: int) -> dict:
+        if not self.nft_available:
+            return {"ok": False, "reason": "chain_or_contracts_unavailable"}
+        nft = self._asset_nft()
+        if nft is None:
+            return {"ok": False, "reason": "asset_nft_not_loaded"}
+        try:
+            tx = self._send(nft.functions.setStatus(int(token_id), int(status)))
+            return {"ok": True, "tx_hash": tx}
+        except Exception as e:
+            return {"ok": False, "reason": str(e)[:160]}
+
+    def asset_owner_did_hash(self, token_id: int) -> Optional[str]:
+        """On-chain ownerDidHash (0x-hex) for a token. None if unavailable."""
+        if not self.nft_available:
+            return None
+        nft = self._asset_nft()
+        if nft is None:
+            return None
+        try:
+            val = nft.functions.ownerDidOf(int(token_id)).call()
+            return "0x" + val.hex()
+        except Exception:
+            return None
+
+    def asset_metadata_hash(self, token_id: int) -> Optional[str]:
+        if not self.nft_available:
+            return None
+        nft = self._asset_nft()
+        if nft is None:
+            return None
+        try:
+            val = nft.functions.metadataHashOf(int(token_id)).call()
+            return "0x" + val.hex()
+        except Exception:
+            return None
+
+    def asset_status(self, token_id: int) -> Optional[int]:
+        if not self.nft_available:
+            return None
+        nft = self._asset_nft()
+        if nft is None:
+            return None
+        try:
+            return int(nft.functions.statusOf(int(token_id)).call())
         except Exception:
             return None

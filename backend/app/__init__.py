@@ -104,6 +104,8 @@ def _register_blueprints(app: Flask) -> None:
     # SIH 26125 identity extension (ADDITIVE — new blueprints, existing ones unchanged)
     from app.blueprints.did import did_bp
     from app.blueprints.roles import roles_bp
+    from app.blueprints.assets import assets_bp
+    from app.blueprints.nft import nft_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
     app.register_blueprint(patients_bp, url_prefix="/api/v1/patients")
@@ -116,6 +118,8 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(compliance_bp, url_prefix="/api/v1/compliance")
     app.register_blueprint(did_bp, url_prefix="/api/v1/did")
     app.register_blueprint(roles_bp, url_prefix="/api/v1/roles")
+    app.register_blueprint(assets_bp, url_prefix="/api/v1/assets")
+    app.register_blueprint(nft_bp, url_prefix="/api/v1/nft")
 
 
 def _register_error_handlers(app: Flask) -> None:

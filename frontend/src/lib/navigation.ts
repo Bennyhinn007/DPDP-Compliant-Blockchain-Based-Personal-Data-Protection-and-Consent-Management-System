@@ -17,6 +17,8 @@ import {
   Settings,
   Nfc,
   KeyRound,
+  Boxes,
+  LockKeyhole,
   type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/types";
@@ -113,6 +115,18 @@ export const NAV_ITEMS: NavItem[] = [
     path: "/identity",
     icon: KeyRound,
     roles: ["patient", "doctor", "pharmacy_staff", "admin", "dpo"],
+  },
+  {
+    label: "Digital Assets",
+    path: "/assets",
+    icon: Boxes,
+    roles: ["patient", "doctor", "pharmacy_staff", "admin", "dpo"],
+  },
+  {
+    label: "Access Control",
+    path: "/admin/access-control",
+    icon: LockKeyhole,
+    roles: ["admin", "dpo"],
   },
 ];
 

@@ -12,6 +12,7 @@ import {
   Link2, Search, Eye, Box, CheckCircle2, XCircle, RefreshCw,
 } from "lucide-react";
 import { adminService, type BlockchainAnchor } from "@/services/adminService";
+import { assetService } from "@/services/assetService";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,12 @@ export function BlockchainExplorer() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["blockchain-explorer", search, page],
     queryFn: () => adminService.getBlockchainAnchors(search, page * pageSize, pageSize),
+  });
+
+  // SIH 26125: cached smart-contract events (identity/role/NFT). Additive.
+  const { data: chainEvents = [] } = useQuery({
+    queryKey: ["chain-events"],
+    queryFn: () => assetService.chainEvents(50),
   });
 
   const handleSearch = () => {
@@ -67,6 +74,38 @@ export function BlockchainExplorer() {
           </Button>
         }
       />
+
+      {/* SIH smart-contract events (identity / role / NFT) — additive */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Box className="h-4 w-4 text-primary-600" />
+            Smart-Contract Events (SIH Identity / Roles / NFT)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {chainEvents.length === 0 ? (
+            <p className="py-4 text-center text-sm text-neutral-400">
+              No contract events yet (identity/role/NFT actions appear here once performed).
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {chainEvents.map((ev) => (
+                <li key={ev._id} className="flex items-center justify-between rounded-md border border-neutral-200 px-3 py-2 text-sm">
+                  <span className="flex items-center gap-2">
+                    <Badge variant="secondary">{ev.contract}</Badge>
+                    <span className="font-medium text-neutral-700">{ev.event_name}</span>
+                  </span>
+                  <span className="flex items-center gap-3 text-xs text-neutral-400">
+                    {ev.tx_hash && <code>{ev.tx_hash.slice(0, 14)}…</code>}
+                    <span>{formatDateTime(ev.indexed_at)}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Search */}
       <Card>

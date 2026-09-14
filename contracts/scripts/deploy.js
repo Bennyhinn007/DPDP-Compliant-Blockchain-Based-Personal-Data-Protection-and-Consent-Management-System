@@ -31,7 +31,14 @@ async function main() {
   const regAddress = await registry.getAddress();
   console.log(`[deploy] IdentityRegistry -> ${regAddress}`);
 
-  // 3. Export ABIs + addresses to backend/contracts/abi/.
+  // 3. AssetNFT (ERC-721 digital assets; role-gated via PAC) — Phase 3.
+  const NFT = await ethers.getContractFactory("AssetNFT");
+  const nft = await NFT.deploy(pacAddress);
+  await nft.waitForDeployment();
+  const nftAddress = await nft.getAddress();
+  console.log(`[deploy] AssetNFT -> ${nftAddress}`);
+
+  // 4. Export ABIs + addresses to backend/contracts/abi/.
   const outDir = path.resolve(__dirname, "..", "..", "backend", "contracts", "abi");
   fs.mkdirSync(outDir, { recursive: true });
 
@@ -44,12 +51,14 @@ async function main() {
   };
   exportAbi("PlatformAccessControl");
   exportAbi("IdentityRegistry");
+  exportAbi("AssetNFT");
 
   const addresses = {
     network: network.name,
     chainId: Number((await ethers.provider.getNetwork()).chainId),
     PlatformAccessControl: pacAddress,
     IdentityRegistry: regAddress,
+    AssetNFT: nftAddress,
     deployer: deployer.address,
     deployedAt: new Date().toISOString(),
   };
@@ -62,6 +71,7 @@ async function main() {
   console.log(`[deploy] Set these env vars for the backend:`);
   console.log(`  SIH_ACCESS_CONTROL_ADDRESS=${pacAddress}`);
   console.log(`  SIH_IDENTITY_REGISTRY_ADDRESS=${regAddress}`);
+  console.log(`  SIH_ASSET_NFT_ADDRESS=${nftAddress}`);
 }
 
 main().catch((err) => {

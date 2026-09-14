@@ -78,3 +78,27 @@ def chameleon_collision_demo():
         "hash_identical": proof["verified"],
         "proof": proof,
     }), 200
+
+
+# ─────────────────────────────────────────────────────────────────────
+# SIH 26125: ON-CHAIN CONTRACT EVENT CACHE (ADDITIVE)
+# ─────────────────────────────────────────────────────────────────────
+
+@blockchain_bp.route("/events", methods=["GET"])
+@jwt_required
+@roles_required("admin", "dpo")
+def chain_events():
+    """
+    List cached SIH smart-contract events (identity/role/NFT/ownership) for the
+    Blockchain Explorer + on-chain audit view. Read-only; served from the
+    chain_events cache, so it works regardless of live chain availability.
+
+    Query: ?limit=100
+    """
+    db = get_db()
+    try:
+        limit = min(int(__import__("flask").request.args.get("limit", 100)), 500)
+    except (ValueError, TypeError):
+        limit = 100
+    events = list(db["chain_events"].find().sort("indexed_at", -1).limit(limit))
+    return jsonify({"events": events, "count": len(events)}), 200

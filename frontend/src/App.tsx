@@ -27,6 +27,8 @@ import { BlockchainExplorer } from "@/pages/admin/BlockchainExplorer";
 import { PhysicalAccessLog } from "@/pages/admin/PhysicalAccessLog";
 import { ProfilePage } from "@/pages/shared/ProfilePage";
 import { IdentityCenter } from "@/pages/identity/IdentityCenter";
+import { DigitalAssetCenter } from "@/pages/assets/DigitalAssetCenter";
+import { AccessControlCenter } from "@/pages/access/AccessControlCenter";
 import { UnauthorizedPage } from "@/pages/UnauthorizedPage";
 
 function App() {
@@ -51,6 +53,7 @@ function App() {
             >
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/identity" element={<IdentityCenter />} />
+              <Route path="/assets" element={<DigitalAssetCenter />} />
             </Route>
 
             {/* Protected (patient) */}
@@ -95,6 +98,7 @@ function App() {
               <Route path="/admin/operations" element={<DPDPOperationsCenter />} />
               <Route path="/admin/blockchain" element={<BlockchainExplorer />} />
               <Route path="/admin/physical-access" element={<PhysicalAccessLog />} />
+              <Route path="/admin/access-control" element={<AccessControlCenter />} />
             </Route>
 
             {/* Defaults */}
