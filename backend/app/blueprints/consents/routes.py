@@ -26,6 +26,24 @@ def _get_patient_id(user_id: str) -> str:
     return patient["_id"]
 
 
+def _validate_optional_did(value, field_name: str):
+    """
+    Validate an OPTIONAL SIH DID reference on a consent.
+
+    Returns None when absent/empty (the common case — consent works without any
+    DID). When present it must be a non-empty `did:rakshaid:` string; otherwise a
+    ValidationError is raised so malformed identifiers are rejected early.
+    """
+    if value is None:
+        return None
+    value = str(value).strip()
+    if not value:
+        return None
+    if not value.startswith("did:rakshaid:"):
+        raise ValidationError(f"{field_name} must be a valid 'did:rakshaid:' identifier")
+    return value
+
+
 # ─────────────────────────────────────────────────────────────────────
 # GRANT
 # ─────────────────────────────────────────────────────────────────────
@@ -52,6 +70,11 @@ def grant_consent():
     patient_id = _get_patient_id(g.current_user_id)
     svc = _get_consent_service()
 
+    # Optional SIH DID bridge (nullable, additive). If provided they must be
+    # well-formed rakshaid DIDs; absence changes nothing (consent works as before).
+    patient_did = _validate_optional_did(data.get("patient_did"), "patient_did")
+    doctor_did = _validate_optional_did(data.get("doctor_did"), "doctor_did")
+
     result = svc.grant_consent(
         user_id=g.current_user_id,
         patient_id=patient_id,
@@ -59,6 +82,8 @@ def grant_consent():
         processing_entity_name=data.get("processing_entity_name", ""),
         expiry_days=data.get("expiry_days", 365),
         custom_scope=data.get("custom_scope"),
+        patient_did=patient_did,
+        doctor_did=doctor_did,
     )
 
     # Audit: consent grant

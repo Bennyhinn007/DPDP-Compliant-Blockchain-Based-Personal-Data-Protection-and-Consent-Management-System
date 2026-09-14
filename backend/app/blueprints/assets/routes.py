@@ -15,7 +15,7 @@ from flask import request, jsonify, g
 from app.blueprints.assets import assets_bp
 from app.extensions import get_db
 from app.config import get_config
-from app.services.asset_nft_service import AssetNFTService, ASSET_TYPES
+from app.services.asset_nft_service import AssetNFTService, ASSET_TYPES, PHINotAllowedError
 from app.middleware.auth_middleware import jwt_required, roles_required
 from app.utils.errors import ValidationError, NotFoundError
 
@@ -68,7 +68,11 @@ def register_asset():
         raise ValidationError("metadata.name required")
 
     svc = _service()
-    asset = svc.register_asset(g.current_user_id, asset_type, metadata)
+    try:
+        asset = svc.register_asset(g.current_user_id, asset_type, metadata)
+    except PHINotAllowedError as e:
+        # No-PHI-on-chain guard: reject healthcare-record-shaped metadata.
+        raise ValidationError(str(e))
     return jsonify({"asset": asset}), 201
 
 

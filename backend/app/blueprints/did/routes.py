@@ -18,6 +18,7 @@ from app.config import get_config
 from app.services.did_service import DIDService
 from app.services.auth_service import AuthService
 from app.middleware.auth_middleware import jwt_required, roles_required
+from app.services.physical_presence_service import check_optional_physical_presence
 from app.utils.errors import ValidationError, AuthenticationError, NotFoundError
 
 
@@ -148,6 +149,10 @@ def revoke_did(did):
     guard = _feature_guard()
     if guard:
         return guard
+    # Optional high-risk gate (OFF by default; never affects healthcare).
+    gate = check_optional_physical_presence(get_db(), g.current_user_id, _config().SIH_RFID_GATE_ENABLED)
+    if gate:
+        return gate
     svc = _did_service()
     if not svc.resolve_did(did):
         raise NotFoundError("DID not found")

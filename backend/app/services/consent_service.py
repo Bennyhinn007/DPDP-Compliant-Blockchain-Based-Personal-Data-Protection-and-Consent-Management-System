@@ -49,6 +49,8 @@ class ConsentService:
         processing_entity_name: str,
         expiry_days: int = 365,
         custom_scope: list[str] = None,
+        patient_did: str = None,
+        doctor_did: str = None,
     ) -> dict:
         """
         Grant consent for a specific processing purpose.
@@ -60,6 +62,10 @@ class ConsentService:
             processing_entity_name: Name of entity receiving access
             expiry_days: Days until consent expires (default 365)
             custom_scope: Override default scope (optional)
+            patient_did: OPTIONAL SIH DID of the patient (nullable, additive).
+                Recorded for cross-referencing only; consent works without it.
+            doctor_did: OPTIONAL SIH DID of the receiving doctor/entity (nullable,
+                additive). Recorded for cross-referencing only.
 
         Returns:
             Dict with consent document and receipt
@@ -112,6 +118,10 @@ class ConsentService:
             "consent_hash": None,
             "blockchain_tx_ref": None,
             "blockchain_anchor_id": None,
+            # Optional SIH identity bridge (nullable, additive). Null when the
+            # patient/doctor has no DID — consent behaves exactly as before.
+            "patient_did": patient_did or None,
+            "doctor_did": doctor_did or None,
             "version": 1,
             "created_at": now,
             "updated_at": now,

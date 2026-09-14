@@ -41,6 +41,24 @@ ASSET_TYPES = [
 # Fields of an asset that hold sensitive/descriptive content (encrypted at rest).
 ASSET_SENSITIVE_FIELDS = ("name", "description", "spec", "document")
 
+# No-PHI guard: metadata keys that indicate a healthcare record / patient PHI.
+# Assets are organizational/digital items (devices, licenses, certificates) — a
+# healthcare record must NEVER be turned into an asset/NFT (governing rule:
+# "records are never NFTs; no PHI on-chain"). Registration is rejected if any of
+# these keys appear, so PHI can never reach the (hashed) on-chain path.
+PHI_FORBIDDEN_KEYS = frozenset({
+    "patient_id", "patient_name", "mrn", "medical_record_id", "medical_record",
+    "diagnosis", "diagnoses", "prescription", "prescriptions", "medication",
+    "medications", "lab_result", "lab_results", "clinical_notes", "clinical_note",
+    "symptoms", "treatment", "treatments", "allergy", "allergies", "vitals",
+    "blood_group", "phi", "healthcare_record", "health_record", "record_id",
+    "aadhaar", "ssn", "dob", "date_of_birth",
+})
+
+
+class PHINotAllowedError(ValueError):
+    """Raised when asset metadata appears to contain healthcare PHI."""
+
 
 class AssetNFTService:
     """Registers assets, mints/assigns/transfers NFTs, verifies ownership."""
@@ -68,11 +86,30 @@ class AssetNFTService:
 
     # ── asset registration (encrypted off-chain) ───────────────────────
 
+    @staticmethod
+    def assert_no_phi(metadata: dict) -> None:
+        """
+        Guard against putting healthcare PHI into an asset. Raises PHINotAllowedError
+        if any metadata key (case-insensitively) matches a known PHI/record key.
+        Enforces "records are never NFTs; no PHI on-chain".
+        """
+        if not isinstance(metadata, dict):
+            return
+        for key in metadata.keys():
+            if str(key).strip().lower() in PHI_FORBIDDEN_KEYS:
+                raise PHINotAllowedError(
+                    f"Metadata field '{key}' looks like healthcare PHI. Assets are for "
+                    "organizational/digital items only — healthcare records are never NFTs."
+                )
+
     def register_asset(self, created_by: str, asset_type: str, metadata: dict) -> dict:
         """
         Store an asset's encrypted metadata off-chain + its keccak256 metadata hash.
         Does NOT mint — minting is a separate admin action.
         """
+        # No-PHI guard (governing rule): reject healthcare-record-shaped metadata.
+        self.assert_no_phi(metadata)
+
         asset_id = generate_uuid()
         now = utc_now()
 

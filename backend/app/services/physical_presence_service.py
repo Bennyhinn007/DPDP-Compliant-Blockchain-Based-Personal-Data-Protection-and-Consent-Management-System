@@ -112,3 +112,27 @@ def physical_presence_required(func):
         return func(*args, **kwargs)
 
     return wrapper
+
+
+def check_optional_physical_presence(db, user_id, enabled: bool):
+    """
+    Optional physical-presence gate for high-risk SIH operations.
+
+    ADDITIVE helper (does not change the existing physical_presence_required
+    decorator). When `enabled` is False, returns None (no gating). When True and
+    the user has no valid RFID tap, returns a (json, 403) tuple the caller should
+    return directly. This lets NFT mint / DID revoke require a physical tap ONLY
+    when SIH_RFID_GATE_ENABLED is set — never affecting healthcare workflows.
+    """
+    if not enabled:
+        return None
+    from flask import jsonify
+    status = PhysicalPresenceService(db).is_physically_present(user_id)
+    if not status.get("present"):
+        return jsonify({
+            "error": True,
+            "message": "Physical verification required for this high-risk action. Tap your RFID card.",
+            "requires_physical_verification": True,
+            "reason": status.get("reason", "No physical verification on record"),
+        }), 403
+    return None

@@ -17,6 +17,25 @@
 
 require("@nomicfoundation/hardhat-toolbox");
 
+// Minimal, dependency-free loader for contracts/.env (so `--network sepolia`
+// picks up SEPOLIA_* without adding a dotenv dependency). Real environment
+// variables always take precedence; the .env file only fills in gaps.
+const fs = require("fs");
+const path = require("path");
+(function loadEnv() {
+  const envPath = path.join(__dirname, ".env");
+  if (!fs.existsSync(envPath)) return;
+  for (const line of fs.readFileSync(envPath, "utf-8").split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq === -1) continue;
+    const key = trimmed.slice(0, eq).trim();
+    const val = trimmed.slice(eq + 1).trim();
+    if (!(key in process.env)) process.env[key] = val;
+  }
+})();
+
 const GANACHE_URL = process.env.GANACHE_URL || "http://127.0.0.1:8545";
 const SEPOLIA_RPC_URL = process.env.SEPOLIA_RPC_URL || "";
 const SEPOLIA_PRIVATE_KEY = process.env.SEPOLIA_PRIVATE_KEY || "";

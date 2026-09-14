@@ -22,6 +22,7 @@ from app.services.contract_service import ContractService
 from app.services.asset_nft_service import AssetNFTService
 from app.services.chain_audit import record_chain_event
 from app.middleware.auth_middleware import jwt_required, roles_required
+from app.services.physical_presence_service import check_optional_physical_presence
 from app.utils.errors import ValidationError
 
 
@@ -60,6 +61,10 @@ def mint_nft():
     guard = _feature_guard()
     if guard:
         return guard
+    # Optional high-risk gate (OFF by default; never affects healthcare).
+    gate = check_optional_physical_presence(get_db(), g.current_user_id, _config().SIH_RFID_GATE_ENABLED)
+    if gate:
+        return gate
     data = request.get_json() or {}
     asset_id = (data.get("asset_id") or "").strip()
     owner_did = (data.get("owner_did") or "").strip()
