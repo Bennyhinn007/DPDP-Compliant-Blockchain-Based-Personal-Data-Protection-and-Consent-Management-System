@@ -26,6 +26,7 @@ import { DPDPOperationsCenter } from "@/pages/admin/DPDPOperationsCenter";
 import { BlockchainExplorer } from "@/pages/admin/BlockchainExplorer";
 import { PhysicalAccessLog } from "@/pages/admin/PhysicalAccessLog";
 import { ProfilePage } from "@/pages/shared/ProfilePage";
+import { IdentityCenter } from "@/pages/identity/IdentityCenter";
 import { UnauthorizedPage } from "@/pages/UnauthorizedPage";
 
 function App() {
@@ -49,6 +50,7 @@ function App() {
               }
             >
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/identity" element={<IdentityCenter />} />
             </Route>
 
             {/* Protected (patient) */}

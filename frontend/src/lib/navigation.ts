@@ -16,6 +16,7 @@ import {
   Link2,
   Settings,
   Nfc,
+  KeyRound,
   type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/types";
@@ -105,6 +106,13 @@ export const NAV_ITEMS: NavItem[] = [
     path: "/admin/physical-access",
     icon: Nfc,
     roles: ["admin"],
+  },
+  // ── SIH 26125 Identity Extension (ADDITIVE) ──
+  {
+    label: "Identity Center",
+    path: "/identity",
+    icon: KeyRound,
+    roles: ["patient", "doctor", "pharmacy_staff", "admin", "dpo"],
   },
 ];
 

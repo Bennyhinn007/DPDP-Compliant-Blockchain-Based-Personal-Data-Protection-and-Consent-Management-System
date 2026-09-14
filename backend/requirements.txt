@@ -10,6 +10,9 @@ dnspython==2.8.0  # required for mongodb+srv:// (Atlas) connection strings
 PyJWT==2.10.1
 bcrypt==4.3.0
 google-auth==2.38.0
+# SIH 26125 DID cryptographic identity (EIP-191 signature verification).
+# eth-account ships with web3 but is pinned explicitly for the DID auth flow.
+eth-account==0.13.4
 
 # Blockchain
 web3==7.6.0

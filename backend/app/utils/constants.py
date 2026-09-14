@@ -8,12 +8,38 @@ from enum import Enum
 
 
 class UserRole(str, Enum):
-    """User roles in the system."""
+    """User roles in the system (existing healthcare roles — UNCHANGED)."""
     PATIENT = "patient"
     DOCTOR = "doctor"
     PHARMACY_STAFF = "pharmacy_staff"
     ADMIN = "admin"
     DPO = "dpo"
+
+
+class SIHRole(str, Enum):
+    """
+    SIH 26125 blockchain/identity roles (ADDITIVE).
+
+    These exist ALONGSIDE the existing healthcare UserRole values — they do NOT
+    rename or replace them. Used by the DID/identity/asset layer and mirrored
+    on-chain by PlatformAccessControl.
+    """
+    ADMIN = "admin"
+    MANAGER = "manager"
+    AUDITOR = "auditor"
+    USER = "user"
+
+
+# Advisory (non-authoritative) mapping from existing healthcare roles to SIH
+# roles, for demo convenience only. This does NOT rename healthcare roles and is
+# NOT the authority for on-chain access control (PlatformAccessControl is).
+HEALTHCARE_TO_SIH_ROLE_ADVISORY = {
+    UserRole.ADMIN.value: SIHRole.ADMIN.value,
+    UserRole.DPO.value: SIHRole.AUDITOR.value,
+    UserRole.DOCTOR.value: SIHRole.MANAGER.value,
+    UserRole.PHARMACY_STAFF.value: SIHRole.USER.value,
+    UserRole.PATIENT.value: SIHRole.USER.value,
+}
 
 
 class ConsentType(str, Enum):

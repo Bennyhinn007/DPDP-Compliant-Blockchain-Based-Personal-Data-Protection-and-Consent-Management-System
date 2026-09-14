@@ -50,6 +50,20 @@ class BaseConfig:
         "https://sepolia.etherscan.io/tx/",
     )
 
+    # ── SIH 26125 Identity & Asset Extension (ADDITIVE) ──────────────────
+    # Master feature flag for the DID / smart-contract / NFT layer. When False,
+    # the SIH endpoints and UI are inert and the platform is the pure DPDP
+    # healthcare product. Healthcare functionality NEVER depends on this flag.
+    SIH_FEATURES_ENABLED = os.environ.get("SIH_FEATURES_ENABLED", "true").lower() == "true"
+    # Prototype DID method name (labeled prototype, not a production DID network).
+    SIH_DID_METHOD = os.environ.get("SIH_DID_METHOD", "rakshaid")
+    # DID auth challenge lifetime (seconds). Application-level expiry (no Mongo TTL).
+    SIH_DID_CHALLENGE_TTL_SECONDS = int(os.environ.get("SIH_DID_CHALLENGE_TTL_SECONDS", "120"))
+    # Deployed contract addresses (populated in Week 2-3; empty until then).
+    SIH_IDENTITY_REGISTRY_ADDRESS = os.environ.get("SIH_IDENTITY_REGISTRY_ADDRESS", "")
+    SIH_ACCESS_CONTROL_ADDRESS = os.environ.get("SIH_ACCESS_CONTROL_ADDRESS", "")
+    SIH_ASSET_NFT_ADDRESS = os.environ.get("SIH_ASSET_NFT_ADDRESS", "")
+
     # Encryption
     ENCRYPTION_KEY_STORE_PATH = os.environ.get("KEY_STORE_PATH", "./keystore")
     AES_KEY_ROTATION_DAYS = 90

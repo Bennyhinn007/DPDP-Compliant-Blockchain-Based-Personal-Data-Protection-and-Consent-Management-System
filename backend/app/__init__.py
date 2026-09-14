@@ -101,6 +101,8 @@ def _register_blueprints(app: Flask) -> None:
     from app.blueprints.blockchain import blockchain_bp
     from app.blueprints.integrity import integrity_bp
     from app.blueprints.compliance import compliance_bp
+    # SIH 26125 identity extension (ADDITIVE — new blueprint, existing ones unchanged)
+    from app.blueprints.did import did_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
     app.register_blueprint(patients_bp, url_prefix="/api/v1/patients")
@@ -111,6 +113,7 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(blockchain_bp, url_prefix="/api/v1/blockchain")
     app.register_blueprint(integrity_bp, url_prefix="/api/v1/integrity")
     app.register_blueprint(compliance_bp, url_prefix="/api/v1/compliance")
+    app.register_blueprint(did_bp, url_prefix="/api/v1/did")
 
 
 def _register_error_handlers(app: Flask) -> None:

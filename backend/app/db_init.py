@@ -133,7 +133,62 @@ def initialize_database(db):
     access_logs.create_index([("patient_id", ASCENDING), ("accessor_role", ASCENDING)], name="idx_patient_role")
     print("  ✓ data_access_logs collection ready")
 
-    print("\n✅ Database initialization complete. 11 collections ready.")
+    # ─────────────────────────────────────────────────────────────────
+    # SIH 26125 Identity & Asset Extension collections (ADDITIVE)
+    # The 11 collections above are UNCHANGED. These 6 are new and independent;
+    # they support the DID / access-control / NFT layer. Application-level
+    # expiry is used for did_challenges (NO MongoDB TTL index).
+    # ─────────────────────────────────────────────────────────────────
+
+    # ─── dids ────────────────────────────────────────────────────
+    if "dids" not in db.list_collection_names():
+        db.create_collection("dids")
+    dids = db["dids"]
+    dids.create_index([("user_id", ASCENDING)], unique=True, name="idx_did_user")
+    dids.create_index([("status", ASCENDING)], name="idx_did_status")
+    print("  ✓ dids collection ready")
+
+    # ─── did_challenges (application-level expiry; NOT a TTL index) ─
+    if "did_challenges" not in db.list_collection_names():
+        db.create_collection("did_challenges")
+    did_challenges = db["did_challenges"]
+    did_challenges.create_index([("nonce", ASCENDING)], unique=True, name="idx_did_nonce")
+    did_challenges.create_index([("did", ASCENDING)], name="idx_did_challenge_did")
+    print("  ✓ did_challenges collection ready")
+
+    # ─── assets (encrypted metadata off-chain) ─────────────────────
+    if "assets" not in db.list_collection_names():
+        db.create_collection("assets")
+    assets = db["assets"]
+    assets.create_index([("asset_type", ASCENDING)], name="idx_asset_type")
+    assets.create_index([("created_at", DESCENDING)], name="idx_asset_created")
+    print("  ✓ assets collection ready")
+
+    # ─── nft_tokens (NFT ↔ DID ↔ asset mapping) ────────────────────
+    if "nft_tokens" not in db.list_collection_names():
+        db.create_collection("nft_tokens")
+    nft_tokens = db["nft_tokens"]
+    nft_tokens.create_index([("token_id", ASCENDING)], unique=True, sparse=True, name="idx_nft_token")
+    nft_tokens.create_index([("owner_did", ASCENDING)], name="idx_nft_owner")
+    print("  ✓ nft_tokens collection ready")
+
+    # ─── role_assignments (on-chain SIH-role mirror cache) ─────────
+    if "role_assignments" not in db.list_collection_names():
+        db.create_collection("role_assignments")
+    role_assignments = db["role_assignments"]
+    role_assignments.create_index([("did", ASCENDING)], name="idx_roleasgn_did")
+    role_assignments.create_index([("sih_role", ASCENDING)], name="idx_roleasgn_role")
+    print("  ✓ role_assignments collection ready")
+
+    # ─── chain_events (contract-event cache; explorer + dual audit) ─
+    if "chain_events" not in db.list_collection_names():
+        db.create_collection("chain_events")
+    chain_events = db["chain_events"]
+    chain_events.create_index([("tx_hash", ASCENDING)], unique=True, sparse=True, name="idx_chainevt_tx")
+    chain_events.create_index([("event_name", ASCENDING), ("block_number", DESCENDING)], name="idx_chainevt_name_block")
+    print("  ✓ chain_events collection ready")
+
+    print("\n✅ Database initialization complete. 11 core + 6 SIH extension collections ready.")
 
 
 if __name__ == "__main__":
