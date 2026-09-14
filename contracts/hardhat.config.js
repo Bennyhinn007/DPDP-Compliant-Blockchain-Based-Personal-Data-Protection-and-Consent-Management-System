@@ -27,6 +27,9 @@ module.exports = {
     version: "0.8.24",
     settings: {
       optimizer: { enabled: true, runs: 200 },
+      // OpenZeppelin Contracts v5 uses the `mcopy` opcode (Cancun). Solidity
+      // 0.8.24 supports targeting the Cancun EVM.
+      evmVersion: "cancun",
     },
   },
   paths: {

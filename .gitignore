@@ -43,3 +43,7 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# SIH contracts: deployed-address artifact is environment-specific / ephemeral.
+# Runtime addresses come from env/config (SIH_*_ADDRESS), never this file.
+backend/contracts/abi/addresses.json

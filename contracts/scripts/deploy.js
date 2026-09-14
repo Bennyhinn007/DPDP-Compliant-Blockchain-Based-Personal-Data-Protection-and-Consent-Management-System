@@ -1,23 +1,67 @@
 /**
- * Deployment script (SKELETON — Week 1 scaffold).
+ * Deploy PlatformAccessControl + IdentityRegistry (Phase 2), then export ABIs
+ * and deployed addresses to backend/contracts/abi/ for the Python ContractService.
  *
- * In Week 2-3 this will:
- *   1. Deploy PlatformAccessControl (single role authority)
- *   2. Deploy IdentityRegistry (identity only; reads roles from PlatformAccessControl)
- *   3. Deploy AssetNFT (ERC-721; Week 3)
- *   4. Wire DEFAULT_ADMIN_ROLE to the deployer / backend admin key
- *   5. Export ABIs + deployed addresses to backend/contracts/abi/
+ * AssetNFT is deployed in Week 3 (Phase 3) — intentionally NOT here.
  *
- * No contracts exist yet, so this script intentionally does nothing but print a
- * notice. It is safe to run and will be filled in during Week 2.
+ * Usage:
+ *   npx hardhat run scripts/deploy.js --network ganache
+ *   npx hardhat run scripts/deploy.js --network sepolia   (Week 4)
  */
 
+const fs = require("fs");
+const path = require("path");
+const { ethers, artifacts, network } = require("hardhat");
+
 async function main() {
-  console.log(
-    "[deploy] SIH 26125 contracts are not authored yet (Week 1 scaffold). " +
-      "Contract deployment is implemented in Week 2 (IdentityRegistry + " +
-      "PlatformAccessControl) and Week 3 (AssetNFT)."
+  const [deployer] = await ethers.getSigners();
+  console.log(`[deploy] network=${network.name} deployer=${deployer.address}`);
+
+  // 1. PlatformAccessControl (single role authority) — admin = deployer.
+  const PAC = await ethers.getContractFactory("PlatformAccessControl");
+  const pac = await PAC.deploy(deployer.address);
+  await pac.waitForDeployment();
+  const pacAddress = await pac.getAddress();
+  console.log(`[deploy] PlatformAccessControl -> ${pacAddress}`);
+
+  // 2. IdentityRegistry (identity only; reads ADMIN gate from PAC).
+  const REG = await ethers.getContractFactory("IdentityRegistry");
+  const registry = await REG.deploy(pacAddress);
+  await registry.waitForDeployment();
+  const regAddress = await registry.getAddress();
+  console.log(`[deploy] IdentityRegistry -> ${regAddress}`);
+
+  // 3. Export ABIs + addresses to backend/contracts/abi/.
+  const outDir = path.resolve(__dirname, "..", "..", "backend", "contracts", "abi");
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const exportAbi = (name) => {
+    const art = artifacts.readArtifactSync(name);
+    fs.writeFileSync(
+      path.join(outDir, `${name}.json`),
+      JSON.stringify({ abi: art.abi }, null, 2)
+    );
+  };
+  exportAbi("PlatformAccessControl");
+  exportAbi("IdentityRegistry");
+
+  const addresses = {
+    network: network.name,
+    chainId: Number((await ethers.provider.getNetwork()).chainId),
+    PlatformAccessControl: pacAddress,
+    IdentityRegistry: regAddress,
+    deployer: deployer.address,
+    deployedAt: new Date().toISOString(),
+  };
+  fs.writeFileSync(
+    path.join(outDir, "addresses.json"),
+    JSON.stringify(addresses, null, 2)
   );
+
+  console.log(`[deploy] ABIs + addresses written to ${outDir}`);
+  console.log(`[deploy] Set these env vars for the backend:`);
+  console.log(`  SIH_ACCESS_CONTROL_ADDRESS=${pacAddress}`);
+  console.log(`  SIH_IDENTITY_REGISTRY_ADDRESS=${regAddress}`);
 }
 
 main().catch((err) => {

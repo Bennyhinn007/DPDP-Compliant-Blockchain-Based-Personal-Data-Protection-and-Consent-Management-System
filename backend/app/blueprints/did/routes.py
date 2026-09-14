@@ -74,6 +74,22 @@ def create_did():
     except ValueError as e:
         raise ValidationError(str(e))
 
+    # Best-effort on-chain registration. DID creation is valid off-chain even if
+    # the chain is unavailable (graceful degradation) — this never blocks.
+    on_chain = {"attempted": False}
+    try:
+        from app.services.contract_service import ContractService
+        from app.extensions import get_web3
+        cs = ContractService(get_web3(), _config())
+        if cs.available:
+            on_chain = {"attempted": True, **cs.register_identity(doc["_id"], doc["pub_key_hash"])}
+            if on_chain.get("ok") and on_chain.get("tx_hash"):
+                get_db()["dids"].update_one(
+                    {"_id": doc["_id"]}, {"$set": {"register_tx": on_chain["tx_hash"]}}
+                )
+    except Exception:
+        on_chain = {"attempted": True, "ok": False, "reason": "chain_error"}
+
     return jsonify({
         "did": doc["_id"],
         "did_hash": doc["did_hash"],
@@ -81,6 +97,7 @@ def create_did():
         "address": doc["address"],
         "status": doc["status"],
         "did_document": doc["did_document"],
+        "on_chain": on_chain,
     }), 201
 
 
