@@ -18,7 +18,7 @@
   <a href="https://github.com/Bennyhinn007/DPDP-Compliant-Blockchain-Based-Personal-Data-Protection-and-Consent-Management-System/actions/workflows/ci.yml">
     <img src="https://github.com/Bennyhinn007/DPDP-Compliant-Blockchain-Based-Personal-Data-Protection-and-Consent-Management-System/actions/workflows/ci.yml/badge.svg" alt="CI" />
   </a>
-  <img src="https://img.shields.io/badge/tests-164%20passing-16A34A?logo=pytest&logoColor=white" alt="Tests" />
+  <img src="https://img.shields.io/badge/tests-214%20passing-16A34A?logo=pytest&logoColor=white" alt="Tests" />
   <img src="https://img.shields.io/badge/DPDP%20Act-2023-6366F1" alt="DPDP" />
   <img src="https://img.shields.io/badge/license-Academic-475569" alt="License" />
 </p>
@@ -254,26 +254,76 @@ The system makes an abstract cryptographic idea *tangible*: evaluators watch a r
 
 ## 📁 Project Structure
 
+The repo has two cohesive layers. The **DPDP healthcare platform** is the primary
+system; the **SIH 26125 identity/asset extension** (DID + smart contracts + NFTs)
+is layered on top — *add, don't replace*. Both share one backend, database, and UI.
+
 ```
 dpdp_kiro/
-├── backend/
+├── backend/                          # Flask 3 · Python 3.13 API
 │   ├── app/
-│   │   ├── blueprints/     # API routes (auth, patients, consents, integrity, blockchain, …)
-│   │   ├── services/       # Business logic (chameleon_crypto, blockchain, encryption, …)
-│   │   ├── middleware/     # JWT, RBAC, audit, physical-presence
-│   │   └── utils/
-│   ├── benchmarks/         # Chameleon-hash benchmark harness + results
-│   ├── seeds/              # Demo data + RFID card enrollment
-│   └── tests/              # 164 self-contained tests (mongomock)
-├── frontend/
+│   │   ├── __init__.py               # App factory + blueprint registration
+│   │   ├── config.py                 # Env config (incl. SIH_* feature flags)
+│   │   ├── db_init.py                # Collection + index bootstrap
+│   │   ├── extensions.py             # MongoDB + Web3 init
+│   │   ├── blueprints/               # HTTP routes (one package per domain)
+│   │   │   ├── auth/                 #   login, Google OAuth, MFA, RFID verify
+│   │   │   ├── patients/  doctors/  pharmacy/
+│   │   │   ├── consents/             #   DPDP consent lifecycle + receipts
+│   │   │   ├── integrity/            #   record verification + tamper demo
+│   │   │   ├── blockchain/           #   hash anchoring + contract events
+│   │   │   ├── audit/  compliance/
+│   │   │   ├── did/                  # ── SIH: DID create / login / revoke
+│   │   │   ├── roles/                # ── SIH: on-chain RBAC (Admin/Manager/…)
+│   │   │   ├── assets/               # ── SIH: digital-asset registration
+│   │   │   └── nft/                  # ── SIH: ERC-721 mint / assign / transfer
+│   │   ├── services/                 # Business logic
+│   │   │   ├── chameleon_crypto.py   #   real 1536-bit chameleon-hash primitive
+│   │   │   ├── chameleon_hash_service.py  # redaction workflow (simulation layer)
+│   │   │   ├── encryption_service.py #   AES-256 (Fernet) field encryption
+│   │   │   ├── blockchain_service.py #   SHA-256 anchoring (Ganache/Sepolia)
+│   │   │   ├── consent_service.py  patient_service.py  audit_service.py  …
+│   │   │   ├── did_service.py        # ── SIH: keypair/DID + EIP-191 verify
+│   │   │   ├── contract_service.py   # ── SIH: web3 wrapper (graceful degrade)
+│   │   │   └── asset_nft_service.py  # ── SIH: encrypted metadata + keccak256
+│   │   ├── middleware/               # JWT, RBAC, audit, physical-presence
+│   │   └── utils/                    # constants, errors, helpers
+│   ├── benchmarks/                   # Chameleon-hash benchmark harness + results
+│   ├── seeds/                        # Demo data + RFID card enrollment
+│   └── tests/                        # Self-contained tests (mongomock) — 214 passing
+│
+├── contracts/                        # ── SIH: Solidity (Hardhat + OpenZeppelin v5)
+│   ├── src/
+│   │   ├── IdentityRegistry.sol      #   on-chain DID registry (identity only)
+│   │   ├── PlatformAccessControl.sol #   single role authority (RBAC)
+│   │   └── AssetNFT.sol              #   ERC-721 digital-asset ownership
+│   ├── test/                         #   Hardhat tests (20 passing)
+│   ├── scripts/deploy.js             #   deploy + export ABIs to backend
+│   └── hardhat.config.js             #   Ganache + Sepolia networks
+│
+├── frontend/                         # React 18 · TypeScript · Vite · Tailwind
 │   └── src/
-│       ├── pages/          # Feature pages by role
-│       ├── components/     # UI + shared (LifecycleStory, TamperDemo, PageHero, …)
-│       └── services/       # API client layer
-├── hardware/               # ESP32 + RC522 RFID terminal firmware
-├── docs/                   # Threat model, demo script, assets
-└── .github/workflows/      # CI pipeline
+│       ├── pages/                    # Feature pages by role
+│       │   ├── auth/                 #   login (password · Google · DID + RFID 2FA)
+│       │   ├── patient/  doctor/  dpo/  admin/  shared/
+│       │   ├── identity/             # ── SIH: Identity Center (create DID)
+│       │   ├── access/               # ── SIH: Access Control Center (roles)
+│       │   └── assets/               # ── SIH: Digital Asset Center (NFTs)
+│       ├── components/               # UI + shared (LifecycleStory, TamperDemo, …)
+│       ├── contexts/                 # AuthContext (password · Google · DID login)
+│       ├── services/                 # API client layer (…, identityService,
+│       │                             #   assetService for SIH)
+│       └── lib/                      # wallet.ts (keypair + EIP-191 signing)
+│
+├── hardware/                         # ESP32 + RC522 RFID terminal firmware
+├── docs/                             # threat-model, demo-script, deployment,
+│                                     #   setup-guide, sih-contracts-deploy, pitch/
+└── .github/workflows/                # CI pipeline
 ```
+
+> Legend: lines marked **`── SIH`** are the additive identity/access/asset
+> extension for SIH PS 26125. Everything else is the original DPDP healthcare
+> platform and runs standalone when SIH features are disabled.
 
 ---
 

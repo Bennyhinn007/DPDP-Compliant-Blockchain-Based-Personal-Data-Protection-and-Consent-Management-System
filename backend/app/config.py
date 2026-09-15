@@ -63,6 +63,12 @@ class BaseConfig:
     # (NFT mint, DID revoke). OFF by default so it never blocks normal usage or
     # healthcare workflows. When on, reuses the existing physical-presence layer.
     SIH_RFID_GATE_ENABLED = os.environ.get("SIH_RFID_GATE_ENABLED", "false").lower() == "true"
+    # Optional: require an RFID physical-presence tap as a SECOND FACTOR for DID
+    # login (DID key = something you have; RFID tap = physical presence). OFF by
+    # default so passwordless DID login works without hardware. When on, DID login
+    # additionally requires a recent RFID tap. Existing password/OAuth/MFA login
+    # is unaffected.
+    SIH_DID_LOGIN_REQUIRE_RFID = os.environ.get("SIH_DID_LOGIN_REQUIRE_RFID", "false").lower() == "true"
     # Deployed contract addresses (populated in Week 2-3; empty until then).
     SIH_IDENTITY_REGISTRY_ADDRESS = os.environ.get("SIH_IDENTITY_REGISTRY_ADDRESS", "")
     SIH_ACCESS_CONTROL_ADDRESS = os.environ.get("SIH_ACCESS_CONTROL_ADDRESS", "")

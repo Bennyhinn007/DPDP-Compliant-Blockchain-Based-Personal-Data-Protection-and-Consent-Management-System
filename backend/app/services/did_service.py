@@ -34,6 +34,7 @@ from eth_account import Account
 from eth_account.messages import encode_defunct
 from eth_keys import keys as eth_keys
 from eth_utils import keccak
+from pymongo.errors import DuplicateKeyError
 
 from app.utils.helpers import utc_now
 
@@ -139,6 +140,16 @@ class DIDService:
         if existing:
             raise ValueError("This user already has a DID")
 
+        # Guard against a DID-string (_id) collision. The DID is derived from the
+        # public key, so the same key always yields the same DID. Inserting a doc
+        # whose _id already exists would raise an uncaught DuplicateKeyError (HTTP
+        # 500), so detect it here and surface a clean validation error instead.
+        did_owner = self.dids.find_one({"_id": material["did"]})
+        if did_owner:
+            if did_owner.get("user_id") == user_id:
+                raise ValueError("This user already has a DID")
+            raise ValueError("This DID is already registered to another account")
+
         did_document = {
             "@context": "https://www.w3.org/ns/did/v1",
             "id": material["did"],
@@ -164,7 +175,12 @@ class DIDService:
             "created_at": now,
             "updated_at": now,
         }
-        self.dids.insert_one(doc)
+        try:
+            self.dids.insert_one(doc)
+        except DuplicateKeyError:
+            # Concurrent insert or a leftover doc with the same DID/user_id.
+            # Convert to a clean validation error (HTTP 422) instead of a 500.
+            raise ValueError("This DID is already registered")
         return doc
 
     def resolve_did(self, did: str) -> Optional[dict]:

@@ -6,7 +6,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import { ShieldCheck, Lock, Mail, AlertCircle } from "lucide-react";
+import { ShieldCheck, Lock, Mail, AlertCircle, KeyRound } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getErrorMessage } from "@/services/api";
 import { Button } from "@/components/ui/button";
@@ -15,15 +15,37 @@ import { Label } from "@/components/ui/label";
 import { GoogleSignInButton } from "@/components/shared/GoogleSignInButton";
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, loginWithDid } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [didLoading, setDidLoading] = useState(false);
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/dashboard";
+
+  const routeByRole = (role: string) => {
+    if (role === "admin" || role === "dpo") {
+      navigate("/dpo", { replace: true });
+    } else {
+      navigate(from, { replace: true });
+    }
+  };
+
+  const handleDidLogin = async () => {
+    setError("");
+    setDidLoading(true);
+    try {
+      const user = await loginWithDid();
+      routeByRole(user.role);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setDidLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -31,12 +53,7 @@ export function LoginPage() {
     setLoading(true);
     try {
       const user = await login(email, password);
-      // Route based on role
-      if (user.role === "admin" || user.role === "dpo") {
-        navigate("/dpo", { replace: true });
-      } else {
-        navigate(from, { replace: true });
-      }
+      routeByRole(user.role);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -121,6 +138,22 @@ export function LoginPage() {
 
           {/* Google Sign-In */}
           <GoogleSignInButton redirectTo={from} onError={setError} text="signin_with" />
+
+          {/* Passwordless DID Sign-In (SIH 26125), optionally RFID 2FA-gated */}
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-3 w-full gap-2"
+            onClick={handleDidLogin}
+            disabled={didLoading}
+          >
+            <KeyRound className="h-4 w-4" />
+            {didLoading ? "Verifying your key..." : "Sign in with DID (passwordless)"}
+          </Button>
+          <p className="mt-1.5 text-center text-[11px] text-neutral-400">
+            Uses your device&apos;s cryptographic key — no password sent. If RFID
+            2FA is enabled, tap your card first.
+          </p>
 
           <div className="mt-6 flex items-center justify-center gap-2 text-xs text-neutral-400">
             <ShieldCheck className="h-3.5 w-3.5 text-success" />

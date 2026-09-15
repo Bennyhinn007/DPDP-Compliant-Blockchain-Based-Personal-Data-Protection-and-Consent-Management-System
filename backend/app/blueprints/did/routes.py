@@ -212,6 +212,22 @@ def did_verify():
     if not user_id:
         raise AuthenticationError("DID is not linked to a user account")
 
+    # Optional second factor: require a recent RFID physical-presence tap.
+    # The DID signature above proves possession of the private key (factor 1);
+    # the RFID tap proves physical presence (factor 2). OFF by default so DID
+    # login works without hardware; when SIH_DID_LOGIN_REQUIRE_RFID is enabled,
+    # a remote attacker holding a stolen key still cannot log in without the card.
+    if getattr(_config(), "SIH_DID_LOGIN_REQUIRE_RFID", False):
+        from app.services.physical_presence_service import PhysicalPresenceService
+        presence = PhysicalPresenceService(get_db()).is_physically_present(user_id)
+        if not presence.get("present"):
+            return jsonify({
+                "error": True,
+                "message": "Second factor required. Tap your RFID card, then sign in with your DID again.",
+                "requires_physical_verification": True,
+                "reason": presence.get("reason", "No physical verification on record"),
+            }), 403
+
     # Reuse the existing auth pipeline to mint the SAME JWT pair as login.
     auth_service = AuthService(get_db(), _config())
     user = auth_service.users.find_one({"_id": user_id})

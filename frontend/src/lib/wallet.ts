@@ -27,6 +27,40 @@ function hex0x(b: Uint8Array): string {
   return "0x" + bytesToHex(b);
 }
 
+/** Bitcoin Base58 alphabet (base58btc) — must match backend did_service._base58btc. */
+const B58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+
+/** Minimal base58btc encoder (mirrors the backend, including leading-zero '1' padding). */
+function base58btc(data: Uint8Array): string {
+  let n = 0n;
+  for (const b of data) n = n * 256n + BigInt(b);
+  let out = "";
+  while (n > 0n) {
+    const rem = Number(n % 58n);
+    n = n / 58n;
+    out = B58_ALPHABET[rem] + out;
+  }
+  let pad = 0;
+  for (const b of data) {
+    if (b === 0) pad++;
+    else break;
+  }
+  return "1".repeat(pad) + out;
+}
+
+/**
+ * Derive the canonical DID string from a 65-byte uncompressed public key.
+ * MUST match backend `did_service.derive_did`:
+ *   did = "did:rakshaid:" + base58btc( keccak256(pubkey)[0:16] )
+ */
+export function deriveDid(publicKeyHex: string): string {
+  const hex = publicKeyHex.startsWith("0x") ? publicKeyHex.slice(2) : publicKeyHex;
+  const pub = hexToBytes(hex);
+  const pubKeyHash = keccak_256(pub); // 32 bytes
+  const identifier = base58btc(pubKeyHash.slice(0, 16));
+  return `did:rakshaid:${identifier}`;
+}
+
 /** Ethereum address = last 20 bytes of keccak256(pubkey without 0x04 prefix). */
 function addressFromUncompressed(pub65: Uint8Array): string {
   const hash = keccak_256(pub65.slice(1)); // drop 0x04 prefix
