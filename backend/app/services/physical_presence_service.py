@@ -10,12 +10,23 @@ This is the hardware step-up authentication layer:
     Password (something you know)  +  RFID card (something you have / physical presence)
 """
 
+import os
 from datetime import datetime, timezone, timedelta
 from app.utils.helpers import generate_uuid, utc_now
 
 
-# How long a physical tap remains valid for gating operations
-PRESENCE_VALIDITY_SECONDS = 120  # 2 minutes
+# How long a physical tap remains valid for gating operations.
+# Configurable via env var PRESENCE_VALIDITY_SECONDS (default 25s). Falls back to
+# 25 if the value is missing or not a valid positive integer.
+def _load_validity_seconds(default: int = 25) -> int:
+    try:
+        val = int(os.environ.get("PRESENCE_VALIDITY_SECONDS", default))
+        return val if val > 0 else default
+    except (ValueError, TypeError):
+        return default
+
+
+PRESENCE_VALIDITY_SECONDS = _load_validity_seconds()
 
 
 class PhysicalPresenceService:
