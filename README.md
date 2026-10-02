@@ -119,7 +119,7 @@ database, and UI:
 | 🔒 **AES-256 Field Encryption** | Fernet field-level encryption; MongoDB stores ciphertext only |
 | 📜 **Consent Management** | 6 consent types with blockchain-anchored receipts; grant / modify / withdraw |
 | ⛓️ **SHA-256 Anchoring** | Record integrity anchored on Ganache **or** Sepolia (separate subsystem from SIH keccak256) |
-| 🪪 **RFID Physical-Presence** | ESP32 + RC522 card tap gates sensitive/DPO actions |
+| 🪪 **RFID Physical-Presence** | ESP32 + RC522 card tap gates sensitive/DPO actions; green/red status LEDs + configurable validity window (default 25s) |
 | 🔑 **Google OAuth + MFA** | Passwordless Google sign-in and TOTP MFA alongside email/password |
 | 📊 **Compliance Scoring** | Real-time DPDP compliance score (0–100) with breakdown |
 
@@ -179,7 +179,8 @@ graph TB
 ## 🔐 How passwordless DID login works
 
 ```
-1. (optional 2FA) Tap RFID card ── records a 120s physical-presence token
+1. (optional 2FA) Tap RFID card ── records a physical-presence token
+                                    (validity configurable, default 25s)
 2. Client asks backend for a one-time challenge         POST /api/v1/did/challenge
 3. Browser signs the challenge with the DID private key (EIP-191, key stays local)
 4. Backend recovers the signer, checks it matches the DID's registered public key,
@@ -237,7 +238,7 @@ Real measured performance of the 1536-bit scheme (see [`backend/benchmarks`](bac
 **Smart Contracts** · Solidity 0.8.24 · OpenZeppelin v5 · Hardhat
 **Chain** · Web3.py · Ganache (dev) · Ethereum Sepolia (testnet-ready)
 **Data** · MongoDB 7 · AES-256 (Fernet)
-**Hardware** · ESP32 · RC522 RFID
+**Hardware** · ESP32 · RC522 RFID · green/red status LEDs
 **Quality** · pytest + mongomock (214 tests) · Hardhat (20 tests) · GitHub Actions CI
 
 </div>
@@ -467,7 +468,7 @@ dpdp_kiro/
 │       │                             #   assetService for SIH)
 │       └── lib/                      # wallet.ts (keypair + EIP-191 signing)
 │
-├── hardware/                         # ESP32 + RC522 RFID terminal firmware
+├── hardware/                         # ESP32 + RC522 RFID firmware (+ green/red status LEDs)
 ├── docs/                             # threat-model, demo-script, deployment,
 │                                     #   setup-guide, sih-contracts-deploy, pitch/
 └── .github/workflows/                # CI pipeline
