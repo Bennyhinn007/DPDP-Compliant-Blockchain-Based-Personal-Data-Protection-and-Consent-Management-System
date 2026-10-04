@@ -110,7 +110,35 @@ export interface SystemHealth {
   checked_at: string;
 }
 
+export interface RegisterPatientInput {
+  full_name: string;
+  email: string;
+  password: string;
+  role?: string; // defaults to "patient" on the backend
+  phone_number?: string;
+  address?: string;
+  blood_group?: string;
+  allergies?: string[];
+  chronic_conditions?: string[];
+}
+
+export interface RegisteredPatient {
+  message: string;
+  role: string;
+  patient_id: string | null;
+  user_id: string;
+  email: string;
+  full_name: string;
+  status: string;
+}
+
 export const adminService = {
+  // ─── Hospital Registration Staff — register a new patient ──────
+  async registerPatient(input: RegisterPatientInput): Promise<RegisteredPatient> {
+    const { data } = await api.post<RegisteredPatient>("/patients/register", input);
+    return data;
+  },
+
   // ─── Governance Data ───────────────────────────────────────────
   async getGovernanceData(): Promise<GovernanceData> {
     const { data } = await api.get<{ governance: GovernanceData }>("/compliance/governance");

@@ -2,7 +2,7 @@
  * Shared TypeScript type definitions.
  */
 
-export type UserRole = "patient" | "doctor" | "pharmacy_staff" | "admin" | "dpo";
+export type UserRole = "patient" | "doctor" | "pharmacy_staff" | "admin" | "dpo" | "registration_staff";
 
 export interface User {
   id: string;
@@ -65,6 +65,10 @@ export interface HealthcareRecord {
   blockchain_anchor_id: string | null;
   created_at: string;
   updated_at: string;
+  // Derived provenance (read-time, from backend) — healthcare-provider origin.
+  created_by_name?: string | null;
+  created_by_role?: string | null;
+  provider_org?: string | null;
 }
 
 // ── Record Lifecycle Story ──────────────────────────────────────────

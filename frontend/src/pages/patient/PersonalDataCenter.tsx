@@ -7,7 +7,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Trash2, ShieldCheck, User, FileText, Eye, MapPin, History } from "lucide-react";
+import { Pencil, Trash2, ShieldCheck, User, FileText, Eye, MapPin, History, Building2 } from "lucide-react";
 import { patientService } from "@/services/patientService";
 import { authService } from "@/services/authService";
 import { getErrorMessage } from "@/services/api";
@@ -185,7 +185,15 @@ export function PersonalDataCenter() {
                       {rec.redacted && <Badge variant="danger">Redacted</Badge>}
                       <Badge variant="neutral">{humanize(rec.record_type)}</Badge>
                     </div>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-neutral-400">
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-400">
+                      {rec.provider_org && (
+                        <span className="flex items-center gap-0.5 text-primary-600">
+                          <Building2 className="h-3 w-3" /> {rec.provider_org}
+                        </span>
+                      )}
+                      {rec.created_by_name && (
+                        <span>by {rec.created_by_name}</span>
+                      )}
                       {rec.symptoms && rec.symptoms.length > 0 && rec.symptoms[0] !== "none" && (
                         <span>{rec.symptoms.join(" • ")}</span>
                       )}
@@ -349,6 +357,35 @@ export function PersonalDataCenter() {
                 <Badge variant="success">Blockchain Verified</Badge>
               )}
             </div>
+            {/* Data provenance — where this record came from */}
+            {(viewTarget.provider_org || viewTarget.created_by_name) && (
+              <div className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-xs">
+                <p className="mb-1 font-medium text-neutral-500">Data Source</p>
+                <div className="grid grid-cols-2 gap-y-1 text-neutral-700">
+                  {viewTarget.provider_org && (
+                    <>
+                      <span className="text-neutral-400">Source</span>
+                      <span className="flex items-center gap-1">
+                        <Building2 className="h-3 w-3 text-primary-600" />
+                        {viewTarget.provider_org}
+                      </span>
+                    </>
+                  )}
+                  {viewTarget.created_by_name && (
+                    <>
+                      <span className="text-neutral-400">Created by</span>
+                      <span>{viewTarget.created_by_name}</span>
+                    </>
+                  )}
+                  {viewTarget.created_by_role && (
+                    <>
+                      <span className="text-neutral-400">Role</span>
+                      <span>{viewTarget.created_by_role === "patient" ? "Self-reported" : "Healthcare Provider"}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
             {viewTarget.description && (
               <div>
                 <p className="text-xs font-medium text-neutral-500">Description</p>

@@ -31,6 +31,94 @@ Open: http://localhost:5173
 - Mention: DPDP Act compliance, blockchain anchoring, consent management
 - Show API docs: http://localhost:5000/api/docs/
 
+---
+
+## ⭐ Headline Flow — Healthcare Data Lifecycle (5–6 min)
+
+> This is the story to lead with. It shows WHERE the data comes from and how the
+> DPDP platform governs it end-to-end. One platform, multiple role-specific views —
+> no separate hospital system. Hospital **registration staff** create the patient
+> account; a **doctor** authors the clinical data; the DPDP layer protects it; the
+> patient controls it; the DPO oversees it.
+
+```
+Staff registers patient  →  Doctor creates record  →  DPDP protects  →  Patient sees
+      →  Patient consents  →  Authorized doctor accesses  →  System audits  →  DPO oversees
+```
+
+### Step 1 — Hospital Registration Staff registers the patient (account origin)
+
+- Log in as the **admin** (acting as the hospital registration desk) —
+  `admin@dpdp-health.in` / `Admin@Secure123`.
+- Open **Register Patient**. Narrate: *this is the hospital front desk creating the
+  patient's account — not clinical data.*
+- Fill name, email, an initial password, and demographics (phone, blood group,
+  allergies, chronic conditions, address) → **Register Patient**.
+- The confirmation shows **Patient ID**, **login email**, and **Status: active**.
+  Point out: the password is set once and never shown again (stored hashed); staff
+  do NOT author diagnoses here.
+
+### Step 2 — Doctor creates the clinical record (data origin)
+
+- Log in as the **doctor** (the Healthcare Provider) —
+  `dr.rahul@citycare.in` / `Doctor@123`.
+- The dashboard header reads **"CityCare Hospital — Healthcare Provider Portal"**,
+  "Logged in as Dr. …". Narrate: *this is the hospital's clinician authoring data
+  at the point of care.*
+- In **Create Healthcare Record**: search/select the patient just registered (the
+  banner shows their Patient ID + consent status), choose a record type (e.g.
+  Consultation), enter a title + clinical notes, click **Create Healthcare Record**.
+
+### Step 3 — DPDP platform protects it (show real results only)
+
+On success the confirmation panel shows the operations the backend **actually**
+performed:
+- ✓ Created by CityCare Hospital (Healthcare Provider)
+- ✓ Record encrypted & stored (patient ownership associated)
+- ✓ Integrity hash: `0x…` (shown only if returned)
+- ✓ Blockchain anchor: `0x…` (or "anchor pending — chain unavailable" if Ganache is off)
+- ✓ Audit event recorded
+
+> Honesty note: if Ganache is not running, the panel honestly says the anchor is
+> pending — the record is still encrypted and saved. Nothing is faked.
+
+### Step 4 — Patient sees the record with its provenance
+
+- Log in as the **patient** (the account staff created in Step 1) → **My Personal
+  Data Center** → Health Records.
+- The new record shows its origin: **🏥 CityCare Hospital · by Dr. … · {date} · Verified**.
+- Open **View** → the **Data Source** block shows Source / Created by / Role
+  (Healthcare Provider). Narrate: *the patient can see exactly who created the data.*
+
+### Step 5 — Patient grants consent
+
+- Go to **Consent Center** → grant **Healthcare Treatment** consent (with its data
+  categories). Show the blockchain-anchored consent receipt.
+
+### Step 6 — Doctor accesses, consent-gated
+
+- Back as the **doctor** → **Patient Search** → the patient shows **Consent Active**.
+- **Access Records** → granted; records display. Narrate: *access is allowed because
+  valid consent exists.*
+- (Optional contrast) withdraw the consent as the patient, retry access as the doctor
+  → **Access Denied** with the DPDP explanation. Belonging to the hospital does NOT
+  bypass consent.
+
+### Step 7 — Everything is audited
+
+- The patient registration, the record create, the access-granted, and the
+  access-denied are all written to the hash-chained audit trail (reuse **Audit
+  Timeline** / record **Lifecycle Story**).
+
+### Step 8 — DPO oversees compliance
+
+- Log in as **admin/DPO** → **Compliance & Governance** → the **Audit Events** count
+  and compliance score reflect the provider-created record and the access events.
+
+---
+
+## Supporting Deep-Dives (use as time allows)
+
 ### 2. Patient Registration & Login (2 min)
 
 - Click "Register" link

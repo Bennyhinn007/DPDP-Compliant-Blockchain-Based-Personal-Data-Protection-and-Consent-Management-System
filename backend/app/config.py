@@ -50,6 +50,11 @@ class BaseConfig:
         "https://sepolia.etherscan.io/tx/",
     )
 
+    # Healthcare provider / organization display name. The doctor/admin side of
+    # the platform represents this hospital (the "Healthcare Provider Portal").
+    # Used only for provenance display — never hard-coded into stored records.
+    PROVIDER_ORG_NAME = os.environ.get("PROVIDER_ORG_NAME", "CityCare Hospital")
+
     # ── SIH 26125 Identity & Asset Extension (ADDITIVE) ──────────────────
     # Master feature flag for the DID / smart-contract / NFT layer. When False,
     # the SIH endpoints and UI are inert and the platform is the pure DPDP

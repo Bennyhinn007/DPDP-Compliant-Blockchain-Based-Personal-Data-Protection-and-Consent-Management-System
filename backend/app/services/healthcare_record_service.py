@@ -21,7 +21,44 @@ class HealthcareRecordService:
         self.db = db
         self.records = db["healthcare_records"]
         self.patients = db["patients"]
+        self.users = db["users"]
         self.enc = get_encryption_service()
+
+    # ─────────────────────────────────────────────────────────────────
+    # PROVENANCE (derived at read time — no stored/migrated fields)
+    # ─────────────────────────────────────────────────────────────────
+
+    def _provider_org(self) -> str:
+        """Configured healthcare-provider/organization display name."""
+        import os
+        from app.config import get_config
+        cfg = get_config(os.environ.get("FLASK_ENV", "development"))
+        return getattr(cfg, "PROVIDER_ORG_NAME", "Healthcare Provider")
+
+    def _with_provenance(self, record: dict) -> dict:
+        """
+        Attach derived, NON-PERSISTED provenance to a decrypted record so the UI
+        can show its healthcare-provider origin. Derived from the existing
+        `created_by` user_id + the configured org name — nothing is stored.
+            created_by_name  — full name of the creating user (fallback generic)
+            created_by_role  — role of the creating user (doctor/admin/patient)
+            provider_org     — configured organization name
+        """
+        if not record:
+            return record
+        creator = None
+        created_by = record.get("created_by")
+        if created_by:
+            creator = self.users.find_one({"_id": created_by})
+        role = (creator or {}).get("role")
+        record["created_by_name"] = (creator or {}).get("full_name") or (
+            "Healthcare Provider" if role in ("doctor", "admin") else "You"
+        )
+        record["created_by_role"] = role
+        # A record authored by a provider (doctor/admin) carries the org as its
+        # source; a patient-self-authored record is sourced to the patient.
+        record["provider_org"] = self._provider_org() if role in ("doctor", "admin") else "Self-reported"
+        return record
 
     # ─────────────────────────────────────────────────────────────────
     # CREATE
@@ -160,7 +197,7 @@ class HealthcareRecordService:
             if not patient or record["patient_id"] != patient["_id"]:
                 raise AuthorizationError("You can only access your own records")
 
-        return self.enc.decrypt_document(record)
+        return self._with_provenance(self.enc.decrypt_document(record))
 
     def list_records_for_patient(
         self,
@@ -196,7 +233,7 @@ class HealthcareRecordService:
             query["record_type"] = record_type
 
         cursor = self.records.find(query).skip(skip).limit(limit).sort("created_at", -1)
-        return [self.enc.decrypt_document(r) for r in cursor]
+        return [self._with_provenance(self.enc.decrypt_document(r)) for r in cursor]
 
     def list_my_records(
         self,
@@ -226,7 +263,7 @@ class HealthcareRecordService:
             query["record_type"] = record_type
 
         cursor = self.records.find(query).skip(skip).limit(limit).sort("created_at", -1)
-        return [self.enc.decrypt_document(r) for r in cursor]
+        return [self._with_provenance(self.enc.decrypt_document(r)) for r in cursor]
 
     # ─────────────────────────────────────────────────────────────────
     # UPDATE

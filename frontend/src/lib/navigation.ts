@@ -19,6 +19,7 @@ import {
   KeyRound,
   Boxes,
   LockKeyhole,
+  UserPlus,
   type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/types";
@@ -68,7 +69,7 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ["patient"],
   },
   {
-    label: "Doctor Dashboard",
+    label: "Provider Portal",
     path: "/doctor",
     icon: Stethoscope,
     roles: ["doctor"],
@@ -84,6 +85,19 @@ export const NAV_ITEMS: NavItem[] = [
     path: "/dpo/compliance",
     icon: PieChart,
     roles: ["admin", "dpo"],
+  },
+  {
+    label: "Register User",
+    path: "/admin/register-patient",
+    icon: UserPlus,
+    roles: ["admin"],
+  },
+  {
+    // Registration staff portal — their ONLY nav item (own restricted path).
+    label: "Register User",
+    path: "/staff/register-patient",
+    icon: UserPlus,
+    roles: ["registration_staff"],
   },
   {
     label: "User Management",

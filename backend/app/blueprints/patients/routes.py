@@ -13,6 +13,7 @@ from app.config import get_config
 from app.services.patient_service import PatientService
 from app.services.healthcare_record_service import HealthcareRecordService
 from app.middleware.auth_middleware import jwt_required, roles_required
+from app.utils.errors import ValidationError, AuthorizationError
 
 
 def _get_patient_service():
@@ -21,6 +22,41 @@ def _get_patient_service():
 
 def _get_record_service():
     return HealthcareRecordService(get_db())
+
+
+def _get_auth_service():
+    from app.services.auth_service import AuthService
+    return AuthService(get_db(), get_config(os.environ.get("FLASK_ENV", "development")))
+
+
+def _audit_record_created(record: dict, actor_role: str, patient_id: str) -> None:
+    """
+    Log an audit event for a newly created healthcare record.
+
+    Record creation was previously un-audited (only correction/erasure were).
+    This surfaces the data-origin event in the audit trail so the DPO and the
+    Record Lifecycle Story can show "record created by the provider". Reuses the
+    existing AuditService hash-chained log — no new logging mechanism.
+    """
+    try:
+        from app.services.audit_service import AuditService
+        AuditService(get_db()).log_event(
+            actor_id=g.current_user_id,
+            actor_role=actor_role,
+            action_type="create",
+            resource_type="healthcare_records",
+            resource_id=record["_id"],
+            patient_id=patient_id,
+            reason="Healthcare record created at point of care",
+            details={
+                "record_type": record.get("record_type"),
+                "verification_hash": record.get("verification_hash"),
+                "blockchain_tx_ref": record.get("blockchain_tx_ref"),
+            },
+            source_ip=request.remote_addr,
+        )
+    except Exception:
+        pass  # audit is best-effort; never blocks record creation
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -248,6 +284,7 @@ def create_my_record():
         symptoms=data.get("symptoms"),
         treatment_notes=data.get("treatment_notes"),
     )
+    _audit_record_created(record, actor_role="patient", patient_id=patient["_id"])
     return jsonify({"record": record, "message": "Record created"}), 201
 
 
@@ -260,6 +297,109 @@ def update_my_record(record_id):
     svc = _get_record_service()
     record = svc.update_record(record_id, g.current_user_id, "patient", data)
     return jsonify({"record": record, "message": "Record updated"}), 200
+
+
+# ─────────────────────────────────────────────────────────────────────
+# HOSPITAL REGISTRATION STAFF — REGISTER A NEW PATIENT
+# ─────────────────────────────────────────────────────────────────────
+
+# Roles that registration_staff is allowed to create. Admin can create ANY role;
+# registration_staff can create any role EXCEPT privileged ones (admin/dpo) to
+# prevent self-escalation (a staff account minting an admin and taking over).
+_STAFF_ASSIGNABLE_ROLES = ("patient", "doctor", "registration_staff")
+_PRIVILEGED_ROLES = ("admin", "dpo")
+
+
+@patients_bp.route("/register", methods=["POST"])
+@jwt_required
+@roles_required("admin", "registration_staff")
+def register_patient():
+    """
+    Register a NEW user account. Used by Hospital Registration Staff and Admin.
+
+    - Admin may create ANY role.
+    - Registration Staff may create any role EXCEPT admin/dpo (no self-escalation).
+    - When role == "patient", demographic profile fields are stored too (reusing
+      the existing encrypted patient profile model).
+
+    Reuses the existing AuthService.register (same password hashing) — NOT a new
+    auth system. Clinical records are still authored only by a doctor elsewhere.
+
+    Body:
+        {
+          "full_name": "...", "email": "...", "password": "...",   # required
+          "role": "patient|doctor|registration_staff|admin|dpo",   # optional, default patient
+          # patient-only demographics (ignored for non-patient roles):
+          "phone_number": "...", "address": "...", "blood_group": "...",
+          "allergies": ["..."], "chronic_conditions": ["..."]
+        }
+    """
+    data = request.get_json() or {}
+    full_name = (data.get("full_name") or "").strip()
+    email = (data.get("email") or "").strip()
+    password = data.get("password") or ""
+    role = (data.get("role") or "patient").strip().lower()
+    if not full_name or not email or not password:
+        raise ValidationError("full_name, email and password are required")
+
+    # Role-assignment authorization (backend-enforced; never trust the client).
+    actor_role = g.current_user_role
+    if actor_role == "registration_staff" and role in _PRIVILEGED_ROLES:
+        raise AuthorizationError("Registration staff cannot create admin or DPO accounts")
+    if actor_role == "registration_staff" and role not in _STAFF_ASSIGNABLE_ROLES:
+        raise ValidationError(f"role must be one of: {list(_STAFF_ASSIGNABLE_ROLES)}")
+
+    auth_svc = _get_auth_service()
+    # Create the account using the EXISTING registration path. allow_privileged_roles
+    # is safe here: this is an authenticated admin/staff endpoint and the role the
+    # caller may assign is already gated above (staff cannot assign admin/dpo).
+    user = auth_svc.register(
+        email=email, password=password, role=role, full_name=full_name,
+        allow_privileged_roles=True,
+    )
+    user_id = user["id"]
+
+    # For patients, fill the demographic profile (reuse encrypted profile model).
+    patient_id = None
+    if role == "patient":
+        patient_svc = _get_patient_service()
+        profile = patient_svc.get_patient_by_user_id(user_id)
+        profile_updates = {
+            k: data.get(k)
+            for k in ("phone_number", "address", "blood_group", "allergies", "chronic_conditions")
+            if data.get(k) is not None
+        }
+        if profile_updates:
+            profile = patient_svc.update_patient_profile(profile["_id"], user_id, profile_updates)
+        patient_id = profile["_id"]
+
+    # Audit: staff/admin-driven account creation (reuse existing AuditService).
+    try:
+        from app.services.audit_service import AuditService
+        AuditService(get_db()).log_event(
+            actor_id=g.current_user_id,
+            actor_role=actor_role,
+            action_type="create",
+            resource_type="users",
+            resource_id=user_id,
+            patient_id=user_id if role == "patient" else None,
+            reason=f"{role} account created by {actor_role}",
+            details={"registered_role": role, "patient_id": patient_id},
+            source_ip=request.remote_addr,
+        )
+    except Exception:
+        pass  # audit is best-effort; never blocks registration
+
+    # Never echo the password back. Return only identifiers + status.
+    return jsonify({
+        "message": f"{role} account created",
+        "role": role,
+        "patient_id": patient_id,   # null for non-patient roles
+        "user_id": user_id,
+        "email": email,
+        "full_name": full_name,
+        "status": "active",
+    }), 201
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -289,9 +429,15 @@ def list_patient_records(patient_id):
 
 @patients_bp.route("/<patient_id>/records", methods=["POST"])
 @jwt_required
-@roles_required("admin")
+@roles_required("admin", "doctor")
 def create_record_for_patient(patient_id):
-    """Create a record for a specific patient (admin only)."""
+    """
+    Create a record for a specific patient — the Healthcare Provider (doctor or
+    admin) authoring data at the point of care. Reuses the same create_record
+    service (encryption + blockchain anchor), so protection is identical to all
+    other record creation. This is provider-side authoring and does NOT bypass
+    the consent gate that protects READING existing records.
+    """
     data = request.get_json() or {}
     svc = _get_record_service()
     record = svc.create_record(
@@ -304,6 +450,7 @@ def create_record_for_patient(patient_id):
         symptoms=data.get("symptoms"),
         treatment_notes=data.get("treatment_notes"),
     )
+    _audit_record_created(record, actor_role=g.current_user_role, patient_id=patient_id)
     return jsonify({"record": record, "message": "Record created"}), 201
 
 

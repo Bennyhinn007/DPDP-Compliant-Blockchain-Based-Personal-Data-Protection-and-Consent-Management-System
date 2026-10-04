@@ -71,6 +71,14 @@ def seed():
         admin = auth.register("admin@dpdp-health.in", "Admin@Secure123", "admin", "Dr. Kaushalya (DPO)")
         print(f"  ✓ Admin: admin@dpdp-health.in / Admin@Secure123")
 
+        # Doctor (Healthcare Provider) — logs into the Provider Portal to create records
+        doctor = auth.register("dr.rahul@citycare.in", "Doctor@123", "doctor", "Dr. Rahul Sharma")
+        print(f"  ✓ Doctor: dr.rahul@citycare.in / Doctor@123")
+
+        # Registration Staff (hospital front desk) — restricted portal: register patients only
+        reg_staff = auth.register("reception@citycare.in", "Staff@123", "registration_staff", "Reception Desk")
+        print(f"  ✓ Registration Staff: reception@citycare.in / Staff@123")
+
         # Patient 1
         p1 = auth.register("rajesh.kumar@gmail.com", "Patient@123", "patient", "Rajesh Kumar")
         print(f"  ✓ Patient: rajesh.kumar@gmail.com / Patient@123")
@@ -115,6 +123,68 @@ def seed():
             "address": "7 Connaught Place, New Delhi 110001",
         })
         print("  ✓ Profiles updated with Indian healthcare data\n")
+
+        # ─── ADDITIONAL DEMO PATIENTS (bulk) ──────────────────────
+        # 10 extra patients so dashboards/metrics look realistic. Registered the
+        # same way as above (register -> profile update). Idempotent: skips any
+        # that already exist so re-running the seed won't error.
+        print("Creating 10 additional demo patients...")
+        extra_patients = [
+            ("sneha.iyer@gmail.com",     "Patient@1001", "Sneha Iyer",      "+91-9801100011", "O+",  ["Latex"],        ["Asthma"],            "12 Anna Salai, Chennai, Tamil Nadu 600002"),
+            ("vikram.singh@gmail.com",   "Patient@1002", "Vikram Singh",    "+91-9801100012", "B-",  [],               ["Hypertension"],      "88 Sector 17, Chandigarh 160017"),
+            ("ananya.das@gmail.com",     "Patient@1003", "Ananya Das",      "+91-9801100013", "A-",  ["Peanuts"],      [],                    "5 Park Street, Kolkata, West Bengal 700016"),
+            ("rohan.mehta@gmail.com",    "Patient@1004", "Rohan Mehta",     "+91-9801100014", "AB+", [],               ["Diabetes Type 2"],   "23 CG Road, Ahmedabad, Gujarat 380009"),
+            ("fatima.khan@gmail.com",    "Patient@1005", "Fatima Khan",     "+91-9801100015", "O-",  ["Sulfa drugs"],  ["Thyroid"],           "9 Charminar Road, Hyderabad, Telangana 500002"),
+            ("arjun.nair@gmail.com",     "Patient@1006", "Arjun Nair",      "+91-9801100016", "B+",  [],               [],                    "31 Marine Drive, Kochi, Kerala 682031"),
+            ("meera.pillai@gmail.com",   "Patient@1007", "Meera Pillai",    "+91-9801100017", "A+",  ["Penicillin"],   ["Migraine"],          "14 FC Road, Pune, Maharashtra 411004"),
+            ("kabir.verma@gmail.com",    "Patient@1008", "Kabir Verma",     "+91-9801100018", "O+",  [],               [],                    "60 Hazratganj, Lucknow, Uttar Pradesh 226001"),
+            ("isha.gupta@gmail.com",     "Patient@1009", "Isha Gupta",      "+91-9801100019", "AB-", ["Aspirin"],      ["Anemia"],            "27 Civil Lines, Jaipur, Rajasthan 302006"),
+            ("dev.reddy@gmail.com",      "Patient@1010", "Dev Reddy",       "+91-9801100020", "B+",  [],               ["Hypertension"],      "40 Banjara Hills, Hyderabad, Telangana 500034"),
+        ]
+        extra_created = 0
+        extra_profiles = []  # (patient_id, user_id, name, chronic[]) for record seeding
+        for email, pwd, name, phone, blood, allergies, chronic, address in extra_patients:
+            try:
+                u = auth.register(email, pwd, "patient", name)
+            except Exception:
+                # register() raises if the email is already registered — idempotent skip.
+                print(f"  • Skipped (exists): {email}")
+                continue
+            prof = patient_svc.get_patient_by_user_id(u["id"])
+            patient_svc.update_patient_profile(prof["_id"], u["id"], {
+                "phone_number": phone,
+                "blood_group": blood,
+                "allergies": allergies,
+                "chronic_conditions": chronic,
+                "address": address,
+            })
+            extra_profiles.append((prof["_id"], u["id"], name, chronic))
+            extra_created += 1
+            print(f"  ✓ Patient: {email} / {pwd}")
+        print(f"  ✓ {extra_created} additional patients created\n")
+
+        # ─── PROVIDER-AUTHORED RECORDS for the extra patients ─────
+        # Created by the seeded DOCTOR (Healthcare Provider), so provenance shows
+        # "CityCare Hospital · Dr. Rahul Sharma". Reuses create_record (encryption
+        # + blockchain anchor + audit-on-create).
+        if extra_created:
+            print("Creating provider-authored records for additional patients...")
+            provider_id = doctor["id"]
+            extra_record_count = 0
+            for pid, uid, name, chronic in extra_profiles:
+                cond = chronic[0] if chronic else "General Health"
+                record_svc.create_record(
+                    patient_id=pid,
+                    created_by=provider_id,
+                    record_type="consultation",
+                    title=f"Consultation — {cond}",
+                    description=f"{name} seen at CityCare Hospital. Routine evaluation for {cond.lower()}; vitals stable, no acute distress.",
+                    diagnosis_codes=["Z00.0"],
+                    symptoms=["none"],
+                    treatment_notes="Advised routine follow-up and healthy lifestyle.",
+                )
+                extra_record_count += 1
+            print(f"  ✓ {extra_record_count} provider-authored records created\n")
 
         # ─── HEALTHCARE RECORDS ───────────────────────────────────
         print("Creating healthcare records...")
@@ -350,6 +420,8 @@ def seed():
   │ Email                          │ Password          │ Role    │
   ├────────────────────────────────┼───────────────────┼─────────┤
   │ admin@dpdp-health.in           │ Admin@Secure123   │ admin   │
+  │ dr.rahul@citycare.in           │ Doctor@123        │ doctor  │
+  │ reception@citycare.in          │ Staff@123         │ reg.staff│
   │ rajesh.kumar@gmail.com         │ Patient@123       │ patient │
   │ priya.sharma@gmail.com         │ Patient@456       │ patient │
   │ amit.patel@gmail.com           │ Patient@789       │ patient │

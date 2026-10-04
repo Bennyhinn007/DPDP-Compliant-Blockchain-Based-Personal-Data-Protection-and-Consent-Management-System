@@ -325,6 +325,8 @@ docker-compose up --build
 | Email | Password | Role |
 |-------|----------|------|
 | `admin@dpdp-health.in` | `Admin@Secure123` | Admin / DPO |
+| `dr.rahul@citycare.in` | `Doctor@123` | Doctor (Healthcare Provider) |
+| `reception@citycare.in` | `Staff@123` | Registration Staff (front desk) |
 | `rajesh.kumar@gmail.com` | `Patient@123` | Patient |
 | `priya.sharma@gmail.com` | `Patient@456` | Patient |
 

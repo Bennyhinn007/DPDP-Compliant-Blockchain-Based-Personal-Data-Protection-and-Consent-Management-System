@@ -65,3 +65,11 @@ export function humanize(value: string | null | undefined): string {
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
 }
+
+/**
+ * Healthcare provider / organization display name.
+ * Overridable via VITE_PROVIDER_ORG_NAME; default matches the backend
+ * PROVIDER_ORG_NAME so the Provider Portal header and record provenance agree.
+ */
+export const PROVIDER_ORG_NAME: string =
+  (import.meta.env.VITE_PROVIDER_ORG_NAME as string | undefined) || "CityCare Hospital";

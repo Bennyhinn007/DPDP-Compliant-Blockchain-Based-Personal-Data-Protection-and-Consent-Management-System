@@ -4,32 +4,39 @@
  * Sets up providers, routing, and route protection.
  */
 
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryProvider } from "@/contexts/QueryProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
 import { AppShell } from "@/layouts/AppShell";
 import { Toaster } from "sonner";
-import { LoginPage } from "@/pages/auth/LoginPage";
-import { RegisterPage } from "@/pages/auth/RegisterPage";
-import { PatientDashboard } from "@/pages/patient/PatientDashboard";
-import { PersonalDataCenter } from "@/pages/patient/PersonalDataCenter";
-import { ConsentCenter } from "@/pages/patient/ConsentCenter";
-import { AuditTimeline } from "@/pages/patient/AuditTimeline";
-import { IntegrityVerification } from "@/pages/patient/IntegrityVerification";
-import { ChameleonHashCenter } from "@/pages/patient/ChameleonHashCenter";
-import { DPODashboard } from "@/pages/dpo/DPODashboard";
-import { DoctorDashboard } from "@/pages/doctor/DoctorDashboard";
-import { ComplianceDashboard } from "@/pages/dpo/ComplianceDashboard";
-import { IdentityGovernance } from "@/pages/admin/IdentityGovernance";
-import { DPDPOperationsCenter } from "@/pages/admin/DPDPOperationsCenter";
-import { BlockchainExplorer } from "@/pages/admin/BlockchainExplorer";
-import { PhysicalAccessLog } from "@/pages/admin/PhysicalAccessLog";
-import { ProfilePage } from "@/pages/shared/ProfilePage";
-import { IdentityCenter } from "@/pages/identity/IdentityCenter";
-import { DigitalAssetCenter } from "@/pages/assets/DigitalAssetCenter";
-import { AccessControlCenter } from "@/pages/access/AccessControlCenter";
-import { UnauthorizedPage } from "@/pages/UnauthorizedPage";
+import { PageLoader } from "@/components/shared/PageLoader";
+
+// Page components are lazy-loaded so each route ships in its own chunk — the
+// initial bundle stays small and a patient never downloads admin/DPO/doctor code.
+// (Named exports -> map to a default for React.lazy.)
+const LoginPage = lazy(() => import("@/pages/auth/LoginPage").then((m) => ({ default: m.LoginPage })));
+const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage").then((m) => ({ default: m.RegisterPage })));
+const PatientDashboard = lazy(() => import("@/pages/patient/PatientDashboard").then((m) => ({ default: m.PatientDashboard })));
+const PersonalDataCenter = lazy(() => import("@/pages/patient/PersonalDataCenter").then((m) => ({ default: m.PersonalDataCenter })));
+const ConsentCenter = lazy(() => import("@/pages/patient/ConsentCenter").then((m) => ({ default: m.ConsentCenter })));
+const AuditTimeline = lazy(() => import("@/pages/patient/AuditTimeline").then((m) => ({ default: m.AuditTimeline })));
+const IntegrityVerification = lazy(() => import("@/pages/patient/IntegrityVerification").then((m) => ({ default: m.IntegrityVerification })));
+const ChameleonHashCenter = lazy(() => import("@/pages/patient/ChameleonHashCenter").then((m) => ({ default: m.ChameleonHashCenter })));
+const DPODashboard = lazy(() => import("@/pages/dpo/DPODashboard").then((m) => ({ default: m.DPODashboard })));
+const DoctorDashboard = lazy(() => import("@/pages/doctor/DoctorDashboard").then((m) => ({ default: m.DoctorDashboard })));
+const ComplianceDashboard = lazy(() => import("@/pages/dpo/ComplianceDashboard").then((m) => ({ default: m.ComplianceDashboard })));
+const IdentityGovernance = lazy(() => import("@/pages/admin/IdentityGovernance").then((m) => ({ default: m.IdentityGovernance })));
+const RegisterPatient = lazy(() => import("@/pages/admin/RegisterPatient").then((m) => ({ default: m.RegisterPatient })));
+const DPDPOperationsCenter = lazy(() => import("@/pages/admin/DPDPOperationsCenter").then((m) => ({ default: m.DPDPOperationsCenter })));
+const BlockchainExplorer = lazy(() => import("@/pages/admin/BlockchainExplorer").then((m) => ({ default: m.BlockchainExplorer })));
+const PhysicalAccessLog = lazy(() => import("@/pages/admin/PhysicalAccessLog").then((m) => ({ default: m.PhysicalAccessLog })));
+const ProfilePage = lazy(() => import("@/pages/shared/ProfilePage").then((m) => ({ default: m.ProfilePage })));
+const IdentityCenter = lazy(() => import("@/pages/identity/IdentityCenter").then((m) => ({ default: m.IdentityCenter })));
+const DigitalAssetCenter = lazy(() => import("@/pages/assets/DigitalAssetCenter").then((m) => ({ default: m.DigitalAssetCenter })));
+const AccessControlCenter = lazy(() => import("@/pages/access/AccessControlCenter").then((m) => ({ default: m.AccessControlCenter })));
+const UnauthorizedPage = lazy(() => import("@/pages/UnauthorizedPage").then((m) => ({ default: m.UnauthorizedPage })));
 
 function App() {
   return (
@@ -37,6 +44,7 @@ function App() {
       <AuthProvider>
         <BrowserRouter>
           <Toaster position="top-right" richColors closeButton />
+          <Suspense fallback={<PageLoader message="Loading..." />}>
           <Routes>
             {/* Public */}
             <Route path="/login" element={<LoginPage />} />
@@ -84,6 +92,17 @@ function App() {
             </Route>
 
             {/* Protected (admin/dpo) */}
+            {/* Protected (registration staff) — RESTRICTED to patient registration only */}
+            <Route
+              element={
+                <ProtectedRoute allowedRoles={["registration_staff"]}>
+                  <AppShell />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/staff/register-patient" element={<RegisterPatient />} />
+            </Route>
+
             <Route
               element={
                 <ProtectedRoute allowedRoles={["admin", "dpo"]}>
@@ -94,6 +113,7 @@ function App() {
               <Route path="/dpo" element={<DPODashboard />} />
               <Route path="/dpo/compliance" element={<ComplianceDashboard />} />
               <Route path="/compliance" element={<ComplianceDashboard />} />
+              <Route path="/admin/register-patient" element={<RegisterPatient />} />
               <Route path="/admin/users" element={<IdentityGovernance />} />
               <Route path="/admin/operations" element={<DPDPOperationsCenter />} />
               <Route path="/admin/blockchain" element={<BlockchainExplorer />} />
@@ -105,6 +125,7 @@ function App() {
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
+          </Suspense>
         </BrowserRouter>
       </AuthProvider>
     </QueryProvider>

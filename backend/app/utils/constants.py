@@ -14,6 +14,9 @@ class UserRole(str, Enum):
     PHARMACY_STAFF = "pharmacy_staff"
     ADMIN = "admin"
     DPO = "dpo"
+    # Hospital front desk: registers patient accounts + demographics ONLY.
+    # Cannot create clinical records or access admin/DPO/doctor functionality.
+    REGISTRATION_STAFF = "registration_staff"
 
 
 class SIHRole(str, Enum):

@@ -46,7 +46,8 @@ class AuthService:
     # REGISTRATION
     # ─────────────────────────────────────────────────────────────────
 
-    def register(self, email: str, password: str, role: str, full_name: str) -> dict:
+    def register(self, email: str, password: str, role: str, full_name: str,
+                 allow_privileged_roles: bool = False) -> dict:
         """
         Register a new user.
 
@@ -63,7 +64,7 @@ class AuthService:
             ValidationError: Invalid input
         """
         # Validate inputs
-        self._validate_registration(email, password, role)
+        self._validate_registration(email, password, role, allow_privileged_roles)
 
         # Check email uniqueness via hash
         email_hash = self._hash_email(email)
@@ -347,7 +348,8 @@ class AuthService:
     # PRIVATE HELPERS
     # ─────────────────────────────────────────────────────────────────
 
-    def _validate_registration(self, email: str, password: str, role: str) -> None:
+    def _validate_registration(self, email: str, password: str, role: str,
+                               allow_privileged_roles: bool = False) -> None:
         """Validate registration inputs."""
         errors = {}
 
@@ -357,7 +359,17 @@ class AuthService:
         if not password or len(password) < 8:
             errors["password"] = "Password must be at least 8 characters"
 
-        allowed_roles = [UserRole.PATIENT.value, UserRole.ADMIN.value, UserRole.DOCTOR.value]
+        # Public self-registration is restricted to non-privileged roles. The
+        # admin-driven staff/admin registration path passes allow_privileged_roles
+        # so an admin can create dpo / pharmacy_staff too.
+        allowed_roles = [
+            UserRole.PATIENT.value,
+            UserRole.ADMIN.value,
+            UserRole.DOCTOR.value,
+            UserRole.REGISTRATION_STAFF.value,
+        ]
+        if allow_privileged_roles:
+            allowed_roles += [UserRole.DPO.value, UserRole.PHARMACY_STAFF.value]
         if role not in allowed_roles:
             errors["role"] = f"Role must be one of: {allowed_roles}"
 

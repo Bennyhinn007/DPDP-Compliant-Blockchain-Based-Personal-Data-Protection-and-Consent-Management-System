@@ -31,6 +31,25 @@ export interface AccessDeniedResult {
   required_consent: string;
 }
 
+export interface CreateRecordInput {
+  record_type: string;
+  title: string;
+  description: string;
+  diagnosis_codes?: string[];
+  symptoms?: string[];
+  treatment_notes?: string;
+}
+
+export interface CreatedRecord {
+  _id: string;
+  title: string;
+  record_type: string;
+  verification_hash: string | null;
+  blockchain_tx_ref: string | null;
+  blockchain_anchor_id: string | null;
+  created_at: string;
+}
+
 export const doctorService = {
   async searchPatients(query: string): Promise<PatientSearchResult[]> {
     const { data } = await api.get<{ patients: PatientSearchResult[] }>(
@@ -45,5 +64,18 @@ export const doctorService = {
       `/doctors/patients/${patientId}/records`
     );
     return data;
+  },
+
+  /**
+   * Provider (doctor) creates a healthcare record for a patient at point of care.
+   * Reuses the existing POST /patients/:id/records endpoint — same encryption,
+   * blockchain anchoring, and audit as all other record creation.
+   */
+  async createRecord(patientId: string, input: CreateRecordInput): Promise<CreatedRecord> {
+    const { data } = await api.post<{ record: CreatedRecord }>(
+      `/patients/${patientId}/records`,
+      input
+    );
+    return data.record;
   },
 };

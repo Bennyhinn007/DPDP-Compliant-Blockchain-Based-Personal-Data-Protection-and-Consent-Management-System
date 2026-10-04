@@ -29,6 +29,10 @@ export function LoginPage() {
   const routeByRole = (role: string) => {
     if (role === "admin" || role === "dpo") {
       navigate("/dpo", { replace: true });
+    } else if (role === "doctor") {
+      navigate("/doctor", { replace: true });
+    } else if (role === "registration_staff") {
+      navigate("/staff/register-patient", { replace: true });
     } else {
       navigate(from, { replace: true });
     }
