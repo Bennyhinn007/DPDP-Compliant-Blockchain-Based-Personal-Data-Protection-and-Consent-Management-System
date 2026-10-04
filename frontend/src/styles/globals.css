@@ -19,11 +19,22 @@
     min-height: 100vh;
   }
 
-  /* Long unbroken strings (emails, DIDs, 0x-hashes, URLs) must wrap instead of
-     overflowing their container and overlapping neighbouring text on mobile. */
-  p, span, div, td, th, dd, dt, li, h1, h2, h3, h4, pre, code {
+  /* Long unbroken strings (emails, DIDs, 0x-hashes, URLs) wrap at sensible
+     points instead of overflowing and overlapping neighbouring text. We use
+     overflow-wrap (breaks only when a word can't fit) — NOT word-break, which
+     would chop normal words into one-letter-per-line. */
+  p, span, div, dd, dt, li, h1, h2, h3, h4, pre, code {
     overflow-wrap: anywhere;
-    word-break: break-word;
+  }
+
+  /* Tables scroll horizontally (their wrapper is overflow-x-auto) rather than
+     squeezing columns and breaking words vertically on small screens. */
+  table {
+    width: max-content;
+    min-width: 100%;
+  }
+  th, td {
+    white-space: nowrap;
   }
 
   /* Headings read near-black for maximum legibility. */
