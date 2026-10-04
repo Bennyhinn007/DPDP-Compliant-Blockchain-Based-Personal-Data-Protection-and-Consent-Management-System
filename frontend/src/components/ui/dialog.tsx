@@ -34,13 +34,13 @@ export function Dialog({ open, onClose, title, description, children, className 
         aria-modal="true"
         aria-label={title}
         className={cn(
-          "relative z-10 w-full max-w-md rounded-xl border border-neutral-200 bg-white shadow-xl",
+          "relative z-10 flex max-h-[90vh] w-full max-w-md flex-col rounded-xl border border-neutral-200 bg-white shadow-xl",
           className
         )}
       >
-        <div className="flex items-start justify-between border-b border-neutral-200 px-6 py-4">
+        <div className="flex items-start justify-between border-b border-neutral-200 px-4 py-4 sm:px-6">
           <div>
-            <h2 className="text-lg font-semibold text-neutral-800">{title}</h2>
+            <h2 className="text-base font-semibold text-neutral-800 sm:text-lg">{title}</h2>
             {description && <p className="mt-0.5 text-sm text-neutral-500">{description}</p>}
           </div>
           <button
@@ -51,7 +51,7 @@ export function Dialog({ open, onClose, title, description, children, className 
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="px-6 py-4">{children}</div>
+        <div className="overflow-y-auto px-4 py-4 sm:px-6">{children}</div>
       </div>
     </div>
   );

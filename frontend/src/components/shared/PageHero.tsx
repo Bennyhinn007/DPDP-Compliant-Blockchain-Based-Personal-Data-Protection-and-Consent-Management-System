@@ -37,7 +37,7 @@ export function PageHero({ title, subtitle, icon: Icon, pill, actions, className
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35 }}
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm lg:p-7",
+        "relative overflow-hidden rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-6 lg:p-7",
         className
       )}
     >
@@ -53,7 +53,7 @@ export function PageHero({ title, subtitle, icon: Icon, pill, actions, className
           )}
           <div>
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-2xl font-bold tracking-tight text-neutral-900">{title}</h1>
+              <h1 className="text-xl font-bold tracking-tight text-neutral-900 sm:text-2xl">{title}</h1>
               {pill && (
                 <span
                   className={cn(
@@ -73,7 +73,7 @@ export function PageHero({ title, subtitle, icon: Icon, pill, actions, className
           </div>
         </div>
 
-        {actions && <div className="flex flex-shrink-0 items-center gap-2">{actions}</div>}
+        {actions && <div className="flex flex-shrink-0 flex-wrap items-center gap-2">{actions}</div>}
       </div>
     </motion.div>
   );
