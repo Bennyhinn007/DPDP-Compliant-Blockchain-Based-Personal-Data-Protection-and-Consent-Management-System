@@ -73,6 +73,33 @@ systems is hard to verify. This platform removes that weakness:
 
 ---
 
+## 🌐 Live Deployment
+
+| | |
+|---|---|
+| **Live app** | https://dpdphealthcare.bennyhinn.dev |
+| **Frontend** | Vercel (React/Vite static build) |
+| **Backend** | Render (Flask + gunicorn) · health check `/health` |
+| **Database** | MongoDB Atlas |
+| **Blockchain** | Ethereum **Sepolia** testnet (SIH identity/access/asset contracts) |
+
+**Deployed SIH contracts (Sepolia):**
+
+| Contract | Address | Explorer |
+|---|---|---|
+| PlatformAccessControl | `0xb959ae2C2e357a92fd8736eFDf69305Acf025C84` | [etherscan](https://sepolia.etherscan.io/address/0xb959ae2C2e357a92fd8736eFDf69305Acf025C84) |
+| IdentityRegistry | `0x80d91274844d78fC2CE9aE84Dd3871B3D415a9A1` | [etherscan](https://sepolia.etherscan.io/address/0x80d91274844d78fC2CE9aE84Dd3871B3D415a9A1) |
+| AssetNFT | `0x7a44a8D353cDf05fd2c93c7c822BAF11F1348651` | [etherscan](https://sepolia.etherscan.io/address/0x7a44a8D353cDf05fd2c93c7c822BAF11F1348651) |
+
+> All runtime secrets (DB URI, keys, RPC URL, wallet key) live in platform
+> environment variables — never in this repo. Contract addresses are public.
+
+**Demo logins:** admin `admin@dpdp-health.in` / `Admin@Secure123` · doctor
+`dr.rahul@citycare.in` / `Doctor@123` · registration staff `reception@citycare.in`
+/ `Staff@123` · patient `rajesh.kumar@gmail.com` / `Patient@123`.
+
+---
+
 ## 🧩 The two layers (Add, Don't Replace)
 
 The platform is **one system with two cohesive layers** that share a single backend,
