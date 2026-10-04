@@ -12,6 +12,20 @@
     overflow-x: hidden;
   }
 
+  /* Shrink the whole UI on phones. Tailwind's text/spacing scale is rem-based,
+     so lowering the root font-size scales every size (text, padding, gaps,
+     icons set in rem) down proportionally — the app reads like a normal mobile
+     website instead of a zoomed-in desktop layout. Desktop stays at 16px. */
+  html {
+    font-size: 14px;
+  }
+  @media (min-width: 640px) {
+    html { font-size: 15px; }
+  }
+  @media (min-width: 1024px) {
+    html { font-size: 16px; }
+  }
+
   body {
     font-family: "Inter", system-ui, sans-serif;
     /* Clean flat background — no color mixing, just a calm light surface. */
