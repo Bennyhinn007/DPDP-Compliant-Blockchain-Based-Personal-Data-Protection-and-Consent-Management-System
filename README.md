@@ -94,9 +94,6 @@ systems is hard to verify. This platform removes that weakness:
 > All runtime secrets (DB URI, keys, RPC URL, wallet key) live in platform
 > environment variables — never in this repo. Contract addresses are public.
 
-**Demo logins:** admin `admin@dpdp-health.in` / `Admin@Secure123` · doctor
-`dr.rahul@citycare.in` / `Doctor@123` · registration staff `reception@citycare.in`
-/ `Staff@123` · patient `rajesh.kumar@gmail.com` / `Patient@123`.
 
 ---
 
