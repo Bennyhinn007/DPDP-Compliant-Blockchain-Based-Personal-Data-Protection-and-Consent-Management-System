@@ -535,6 +535,6 @@ dpdp_kiro/
 **One platform: verifiable identity, un-bypassable access, and provable ownership —
 with privacy kept off-chain and trust kept on-chain.**
 
-<sub>Academic Project · SIH 2026 PS 26125 · All Rights Reserved · India 🇮🇳 · DPDP Act 2023</sub>
+<sub>Academic Project · All Rights Reserved · India 🇮🇳 · DPDP Act 2023</sub>
 
 </div>
