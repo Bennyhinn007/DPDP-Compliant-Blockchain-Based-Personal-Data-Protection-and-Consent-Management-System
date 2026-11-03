@@ -5,9 +5,17 @@
 import api from "./api";
 import type { LoginResponse, User } from "@/types";
 
+/** Login can either succeed (LoginResponse) or ask for an MFA code first. */
+export type LoginResult = LoginResponse & {
+  mfa_required?: boolean;      // admin MFA enabled, code needed to continue
+  mfa_setup_required?: boolean; // admin without MFA — steer to setup after login
+};
+
 export const authService = {
-  async login(email: string, password: string): Promise<LoginResponse> {
-    const { data } = await api.post<LoginResponse>("/auth/login", { email, password });
+  async login(email: string, password: string, mfaCode?: string): Promise<LoginResult> {
+    const body: Record<string, string> = { email, password };
+    if (mfaCode) body.mfa_code = mfaCode;
+    const { data } = await api.post<LoginResult>("/auth/login", body);
     return data;
   },
 

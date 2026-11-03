@@ -13,7 +13,7 @@ from app.config import get_config
 from app.services.auth_service import AuthService
 from app.middleware.auth_middleware import jwt_required, roles_required
 from app.middleware.audit_middleware import log_audit_event
-from app.utils.errors import ValidationError
+from app.utils.errors import ValidationError, AuthenticationError
 
 
 def _get_auth_service():
@@ -99,10 +99,41 @@ def login():
         raise ValidationError("Request body required")
 
     auth_service = _get_auth_service()
+    # Step 1 — password authentication (unchanged for all roles).
     result = auth_service.login(
         email=data.get("email", "").strip(),
         password=data.get("password", ""),
     )
+
+    # Step 2 — mandatory MFA gate for ADMIN/DPO (enroll-on-first-login).
+    user = result["user"]
+    cfg = get_config(os.environ.get("FLASK_ENV", "development"))
+    admin_mfa_required = bool(getattr(cfg, "ADMIN_MFA_REQUIRED", True))
+
+    if admin_mfa_required and user["role"] == "admin":
+        db = get_db()
+        raw_user = db["users"].find_one({"_id": user["id"]})
+        mfa_enabled = bool(raw_user and raw_user.get("mfa_enabled"))
+        mfa_code = str(data.get("mfa_code", "")).strip()
+
+        if mfa_enabled:
+            # MFA is set up → a valid code is REQUIRED before tokens are issued.
+            if not mfa_code:
+                # No code yet → tell the frontend to prompt for one. NO TOKENS.
+                return jsonify({
+                    "mfa_required": True,
+                    "message": "Enter the 6-digit code from your authenticator app.",
+                }), 200
+            # Verify the code; invalid → 401 (tokens never exposed).
+            from app.services.mfa_service import MFAService
+            try:
+                MFAService(db).verify_code(user["id"], mfa_code)
+            except AuthenticationError:
+                raise AuthenticationError("Invalid MFA code")
+        else:
+            # Admin has not set up MFA yet → allow this login but flag that setup
+            # is required so the frontend steers them to enable it immediately.
+            result["mfa_setup_required"] = True
 
     # Audit: login event
     from app.services.audit_service import AuditService

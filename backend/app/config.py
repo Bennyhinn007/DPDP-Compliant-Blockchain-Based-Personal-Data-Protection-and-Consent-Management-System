@@ -55,6 +55,12 @@ class BaseConfig:
     # Used only for provenance display — never hard-coded into stored records.
     PROVIDER_ORG_NAME = os.environ.get("PROVIDER_ORG_NAME", "CityCare Hospital")
 
+    # Mandatory TOTP (Google Authenticator) MFA for ADMIN/DPO login. When True,
+    # an admin with MFA enabled must supply a valid 6-digit code at login; an
+    # admin without MFA yet logs in once and is steered to set it up
+    # (enroll-on-first-login). Non-admin roles are unaffected.
+    ADMIN_MFA_REQUIRED = os.environ.get("ADMIN_MFA_REQUIRED", "true").lower() == "true"
+
     # ── SIH 26125 Identity & Asset Extension (ADDITIVE) ──────────────────
     # Master feature flag for the DID / smart-contract / NFT layer. When False,
     # the SIH endpoints and UI are inert and the platform is the pure DPDP

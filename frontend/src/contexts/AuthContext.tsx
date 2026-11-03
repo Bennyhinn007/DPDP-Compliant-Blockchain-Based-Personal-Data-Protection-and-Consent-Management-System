@@ -10,11 +10,16 @@ import { identityService } from "@/services/identityService";
 import { loadWallet, personalSign, deriveDid } from "@/lib/wallet";
 import type { User } from "@/types";
 
+/** Result of a password login: either succeeded, or an MFA code is required. */
+export type LoginOutcome =
+  | { status: "ok"; user: User; mfaSetupRequired: boolean }
+  | { status: "mfa_required" };
+
 interface AuthContextValue {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<User>;
+  login: (email: string, password: string, mfaCode?: string) => Promise<LoginOutcome>;
   loginWithGoogle: (idToken: string) => Promise<User>;
   loginWithDid: () => Promise<User>;
   logout: () => void;
@@ -53,9 +58,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return result.user;
   };
 
-  const login = async (email: string, password: string): Promise<User> => {
-    const result = await authService.login(email, password);
-    return persistSession(result);
+  const login = async (email: string, password: string, mfaCode?: string): Promise<LoginOutcome> => {
+    const result = await authService.login(email, password, mfaCode);
+    // Admin MFA is enabled but no/invalid code yet → ask the UI to prompt.
+    if (result.mfa_required) {
+      return { status: "mfa_required" };
+    }
+    const u = persistSession(result);
+    // Admin without MFA set up → logged in, but UI should steer to setup.
+    return { status: "ok", user: u, mfaSetupRequired: !!result.mfa_setup_required };
   };
 
   const loginWithGoogle = async (idToken: string): Promise<User> => {

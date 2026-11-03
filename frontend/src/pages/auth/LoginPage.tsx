@@ -23,6 +23,9 @@ export function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [didLoading, setDidLoading] = useState(false);
+  // Admin MFA: when true, show the 6-digit authenticator-code step.
+  const [mfaStep, setMfaStep] = useState(false);
+  const [mfaCode, setMfaCode] = useState("");
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/dashboard";
 
@@ -51,13 +54,37 @@ export function LoginPage() {
     }
   };
 
+  // Step 1: email + password. May return an MFA challenge for admins.
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
-      const user = await login(email, password);
-      routeByRole(user.role);
+      const outcome = await login(email, password);
+      if (outcome.status === "mfa_required") {
+        setMfaStep(true);           // show the 6-digit code input
+        return;
+      }
+      routeByRole(outcome.user.role);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Step 2: admin submits the authenticator code to complete login.
+  const handleMfaSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      const outcome = await login(email, password, mfaCode.trim());
+      if (outcome.status === "mfa_required") {
+        setError("Invalid code. Please try again.");
+        return;
+      }
+      routeByRole(outcome.user.role);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -83,9 +110,13 @@ export function LoginPage() {
 
         {/* Login card */}
         <div className="rounded-xl border border-neutral-200 bg-white p-8 shadow-sm">
-          <h2 className="mb-1 text-lg font-semibold text-neutral-800">Sign in</h2>
+          <h2 className="mb-1 text-lg font-semibold text-neutral-800">
+            {mfaStep ? "Two-factor authentication" : "Sign in"}
+          </h2>
           <p className="mb-6 text-sm text-neutral-500">
-            Access your health data securely
+            {mfaStep
+              ? "Enter the 6-digit code from your authenticator app."
+              : "Access your health data securely"}
           </p>
 
           {error && (
@@ -95,6 +126,36 @@ export function LoginPage() {
             </div>
           )}
 
+          {mfaStep ? (
+            <form onSubmit={handleMfaSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="mfa">Authenticator Code</Label>
+                <div className="relative">
+                  <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+                  <Input
+                    id="mfa"
+                    inputMode="numeric"
+                    autoFocus
+                    value={mfaCode}
+                    onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="123456"
+                    className="pl-10 tracking-widest"
+                    required
+                  />
+                </div>
+              </div>
+              <Button type="submit" className="w-full" disabled={loading || mfaCode.length !== 6}>
+                {loading ? "Verifying..." : "Verify & Sign in"}
+              </Button>
+              <button
+                type="button"
+                onClick={() => { setMfaStep(false); setMfaCode(""); setError(""); }}
+                className="w-full text-center text-xs text-neutral-400 hover:text-neutral-600"
+              >
+                Back to login
+              </button>
+            </form>
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
@@ -132,8 +193,11 @@ export function LoginPage() {
               {loading ? "Signing in..." : "Sign in"}
             </Button>
           </form>
+          )}
 
-          {/* Divider */}
+          {/* Divider + alternate sign-in — hidden during the MFA code step */}
+          {!mfaStep && (
+          <>
           <div className="my-5 flex items-center gap-3">
             <div className="h-px flex-1 bg-neutral-200" />
             <span className="text-xs font-medium text-neutral-400">OR</span>
@@ -158,6 +222,8 @@ export function LoginPage() {
             Uses your device&apos;s cryptographic key — no password sent. If RFID
             2FA is enabled, tap your card first.
           </p>
+          </>
+          )}
 
           <div className="mt-6 flex items-center justify-center gap-2 text-xs text-neutral-400">
             <ShieldCheck className="h-3.5 w-3.5 text-success" />
