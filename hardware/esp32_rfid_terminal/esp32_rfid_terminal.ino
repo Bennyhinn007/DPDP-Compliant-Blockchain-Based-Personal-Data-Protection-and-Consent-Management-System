@@ -36,6 +36,7 @@
 #include <MFRC522.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include <ESPmDNS.h>
 
 #define SS_PIN     5
 #define RST_PIN    22
@@ -49,8 +50,34 @@ MFRC522 rfid(SS_PIN, RST_PIN);
 // ================= FILL THESE IN =================
 const char* WIFI_SSID     = "Redmi Note 14 Pro+ 5G";
 const char* WIFI_PASSWORD = "benny2005";
-const char* BACKEND_URL   = "http://10.104.227.138:5000/api/v1/auth/rfid-verify";
+
+// We resolve the PC by its hostname (mDNS) instead of a hard-coded IP, so the
+// ESP32 keeps working even when the laptop's IP changes — flash ONCE, never
+// edit again. BACKEND_HOST is your PC name WITHOUT the ".local" suffix.
+const char* BACKEND_HOST  = "ASUS-VIVOBOOK-15";   // -> resolves ASUS-VIVOBOOK-15.local
+const int   BACKEND_PORT  = 5000;
+const char* BACKEND_PATH  = "/api/v1/auth/rfid-verify";
 // =================================================
+
+// Resolved at runtime from the hostname (falls back to re-resolving if it fails).
+IPAddress backendIP;
+bool backendResolved = false;
+
+// Resolve BACKEND_HOST.local -> IP via mDNS. Returns true on success.
+bool resolveBackend() {
+  IPAddress ip = MDNS.queryHost(BACKEND_HOST);   // looks up "<host>.local"
+  if (ip != IPAddress(0, 0, 0, 0)) {
+    backendIP = ip;
+    backendResolved = true;
+    Serial.print("Backend resolved: ");
+    Serial.print(BACKEND_HOST);
+    Serial.print(".local -> ");
+    Serial.println(backendIP);
+    return true;
+  }
+  Serial.println("Could not resolve backend hostname (is the PC on the same WiFi?).");
+  return false;
+}
 
 // ── LED helpers ──────────────────────────────────────────────────────
 
@@ -120,6 +147,11 @@ void setup() {
   if (WiFi.status() == WL_CONNECTED) {
     Serial.print("WiFi connected. ESP32 IP: ");
     Serial.println(WiFi.localIP());
+    // Start mDNS and resolve the backend PC by hostname (no hard-coded IP).
+    if (!MDNS.begin("esp32-rfid")) {
+      Serial.println("mDNS start failed.");
+    }
+    resolveBackend();   // best-effort; loop() re-resolves if this misses
     // Quick green flash = ready and online.
     showGranted(300);
   } else {
@@ -149,12 +181,29 @@ void loop() {
   Serial.println(cardId);
 
   if (WiFi.status() == WL_CONNECTED) {
+    // Make sure we have the backend IP (re-resolve if the first attempt missed
+    // or the PC's IP changed since boot).
+    if (!backendResolved) resolveBackend();
+    if (!backendResolved) {
+      Serial.println("Backend not resolved — cannot send. Is the PC on this WiFi?");
+      showError();
+      rfid.PICC_HaltA();
+      delay(500);
+      return;
+    }
+
+    // Build the URL from the resolved IP: http://<ip>:<port><path>
+    String url = "http://" + backendIP.toString() + ":" + String(BACKEND_PORT) + BACKEND_PATH;
+
     HTTPClient http;
-    http.begin(BACKEND_URL);
+    http.begin(url);
     http.addHeader("Content-Type", "application/json");
 
     String payload = "{\"card_id\":\"" + cardId + "\"}";
     int code = http.POST(payload);
+    // If the POST failed at the connection level, the PC's IP may have changed —
+    // drop the cached resolution so the next tap re-resolves.
+    if (code <= 0) backendResolved = false;
 
     if (code > 0) {
       String response = http.getString();
