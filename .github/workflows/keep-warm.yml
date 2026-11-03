@@ -1,0 +1,39 @@
+name: Keep backend warm
+
+# Pings the Render backend's /health endpoint on a schedule so the free-tier
+# service never sleeps (no more 30-60s cold-start delay on the first login).
+# Render free tier idles after ~15 min; we ping well inside that window.
+
+on:
+  schedule:
+    # Every 10 minutes (GitHub cron is UTC; interval is what matters here).
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}   # allows manual "Run workflow" from the Actions tab
+
+# Avoid overlapping runs if one is slow (e.g. waking a cold instance).
+concurrency:
+  group: keep-warm
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /health
+        run: |
+          URL="https://dpdp-backend-4zto.onrender.com/health"
+          echo "Pinging $URL"
+          # Retry up to 6 times (a cold instance can take ~30-60s to wake).
+          for i in 1 2 3 4 5 6; do
+            code=$(curl -s -o /tmp/body -w "%{http_code}" --max-time 90 "$URL" || echo "000")
+            echo "Attempt $i -> HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "Backend is awake:"; cat /tmp/body; echo
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "Backend did not return 200 after retries (it may still be waking)."
+          # Don't fail the workflow for a transient wake delay — the ping itself
+          # is what keeps Render from sleeping.
+          exit 0
