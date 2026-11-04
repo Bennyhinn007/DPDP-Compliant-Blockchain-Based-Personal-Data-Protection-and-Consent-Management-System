@@ -3,7 +3,7 @@ Flask==3.1.1
 flask-cors==5.0.1
 
 # MongoDB
-pymongo==4.12.1
+pymongo==4.19.0
 dnspython==2.8.0  # required for mongodb+srv:// (Atlas) connection strings
 
 # Authentication
