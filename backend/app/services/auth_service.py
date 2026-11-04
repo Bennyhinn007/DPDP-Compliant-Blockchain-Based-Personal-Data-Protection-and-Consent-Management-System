@@ -391,6 +391,24 @@ class AuthService:
         import hashlib
         return hashlib.sha256(email.lower().strip().encode("utf-8")).hexdigest()
 
+    def issue_tokens_for_user(self, user_doc: dict) -> dict:
+        """
+        Issue the same token payload as login() for an already-authenticated user
+        (password step done elsewhere, e.g. password + fingerprint login).
+        """
+        now = utc_now()
+        self.users.update_one(
+            {"_id": user_doc["_id"]},
+            {"$set": {"failed_login_attempts": 0, "last_login": now, "updated_at": now}}
+        )
+        return {
+            "access_token": self._generate_access_token(user_doc),
+            "refresh_token": self._generate_refresh_token(user_doc),
+            "token_type": "Bearer",
+            "expires_in": int(self.config.JWT_ACCESS_TOKEN_EXPIRES.total_seconds()),
+            "user": self._sanitize_user(user_doc),
+        }
+
     def _generate_access_token(self, user: dict) -> str:
         """Generate JWT access token (1 hour)."""
         now = datetime.now(timezone.utc)

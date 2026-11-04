@@ -6,16 +6,18 @@
 
 import { useState, type FormEvent } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import { ShieldCheck, Lock, Mail, AlertCircle, KeyRound } from "lucide-react";
+import { ShieldCheck, Lock, Mail, AlertCircle, KeyRound, Fingerprint } from "lucide-react";
+import { isAxiosError } from "axios";
 import { useAuth } from "@/contexts/AuthContext";
 import { getErrorMessage } from "@/services/api";
+import { FingerprintError } from "@/lib/fingerprint";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GoogleSignInButton } from "@/components/shared/GoogleSignInButton";
 
 export function LoginPage() {
-  const { login, loginWithDid } = useAuth();
+  const { login, loginWithFingerprint, loginWithDid } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState("");
@@ -26,6 +28,25 @@ export function LoginPage() {
   // Admin MFA: when true, show the 6-digit authenticator-code step.
   const [mfaStep, setMfaStep] = useState(false);
   const [mfaCode, setMfaCode] = useState("");
+
+  // Fingerprint second factor (additive to the TOTP step above).
+  const [mfaMethods, setMfaMethods] = useState<string[]>([]);
+  const [pendingToken, setPendingToken] = useState<string | undefined>(undefined);
+  const [fpProvider, setFpProvider] = useState<string | undefined>(undefined);
+  const [useCodeInstead, setUseCodeInstead] = useState(false);
+  const [fpLoading, setFpLoading] = useState(false);
+  const hasFingerprint = mfaMethods.includes("fingerprint") && !!pendingToken;
+  const hasTotp = mfaMethods.includes("totp");
+  const fingerprintView = hasFingerprint && !(hasTotp && useCodeInstead);
+
+  const resetMfa = () => {
+    setMfaStep(false);
+    setMfaCode("");
+    setMfaMethods([]);
+    setPendingToken(undefined);
+    setFpProvider(undefined);
+    setUseCodeInstead(false);
+  };
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/dashboard";
 
@@ -62,7 +83,11 @@ export function LoginPage() {
     try {
       const outcome = await login(email, password);
       if (outcome.status === "mfa_required") {
-        setMfaStep(true);           // show the 6-digit code input
+        setMfaMethods(outcome.methods);
+        setPendingToken(outcome.pendingToken);
+        setFpProvider(outcome.fingerprintProvider);
+        setUseCodeInstead(false);
+        setMfaStep(true);           // show the fingerprint and/or 6-digit code step
         return;
       }
       routeByRole(outcome.user.role);
@@ -92,6 +117,31 @@ export function LoginPage() {
     }
   };
 
+  // Step 2 (alt): admin unlocks with the SecuGen fingerprint reader.
+  const handleFingerprint = async () => {
+    if (!pendingToken) return;
+    setError("");
+    setFpLoading(true);
+    try {
+      const user = await loginWithFingerprint(pendingToken, fpProvider ?? "secugen");
+      routeByRole(user.role);
+    } catch (err) {
+      if (isAxiosError(err) && err.response?.status === 401) {
+        resetMfa();
+        setError("Login session expired. Please sign in again.");
+      } else if (isAxiosError(err) && err.response?.status === 403) {
+        const left = (err.response.data as { attempts_left?: number } | undefined)?.attempts_left;
+        setError(`Fingerprint did not match. Attempts left: ${left ?? 0}`);
+      } else if (err instanceof FingerprintError) {
+        setError(err.message);
+      } else {
+        setError(getErrorMessage(err));
+      }
+    } finally {
+      setFpLoading(false);
+    }
+  };
+
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-neutral-50 px-4">
       <div className="relative w-full max-w-md">
@@ -115,7 +165,9 @@ export function LoginPage() {
           </h2>
           <p className="mb-6 text-sm text-neutral-500">
             {mfaStep
-              ? "Enter the 6-digit code from your authenticator app."
+              ? fingerprintView
+                ? "Place your finger on the reader."
+                : "Enter the 6-digit code from your authenticator app."
               : "Access your health data securely"}
           </p>
 
@@ -126,7 +178,38 @@ export function LoginPage() {
             </div>
           )}
 
-          {mfaStep ? (
+          {mfaStep && fingerprintView ? (
+            <div className="space-y-4">
+              <Button
+                type="button"
+                className="w-full gap-2"
+                onClick={handleFingerprint}
+                disabled={fpLoading}
+              >
+                <Fingerprint className="h-4 w-4" />
+                {fpLoading ? "Waiting for fingerprint..." : "Unlock with fingerprint"}
+              </Button>
+              <p className="text-center text-xs text-neutral-500" aria-live="polite">
+                Place your finger on the SecuGen reader
+              </p>
+              {hasTotp && (
+                <button
+                  type="button"
+                  onClick={() => { setUseCodeInstead(true); setError(""); }}
+                  className="w-full text-center text-xs text-primary-600 hover:text-primary-700"
+                >
+                  Use authenticator code instead
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => { resetMfa(); setError(""); }}
+                className="w-full text-center text-xs text-neutral-400 hover:text-neutral-600"
+              >
+                Back to login
+              </button>
+            </div>
+          ) : mfaStep ? (
             <form onSubmit={handleMfaSubmit} className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="mfa">Authenticator Code</Label>
@@ -149,7 +232,7 @@ export function LoginPage() {
               </Button>
               <button
                 type="button"
-                onClick={() => { setMfaStep(false); setMfaCode(""); setError(""); }}
+                onClick={() => { resetMfa(); setError(""); }}
                 className="w-full text-center text-xs text-neutral-400 hover:text-neutral-600"
               >
                 Back to login

@@ -23,6 +23,43 @@ def _get_auth_service():
     return AuthService(db, config)
 
 
+def _fingerprint_login_enabled(cfg) -> bool:
+    """Both the biometric feature and fingerprint login must be on."""
+    return bool(getattr(cfg, "BIOMETRIC_ENABLED", True)
+                and getattr(cfg, "BIOMETRIC_LOGIN_ENABLED", True))
+
+
+def _bio_audit(actor_id, actor_role, action_type, reason, severity="info", details=None):
+    """Best-effort biometric audit row (never blocks the login flow)."""
+    try:
+        from app.services.audit_service import AuditService
+        AuditService(get_db()).log_event(
+            actor_id=actor_id,
+            actor_role=actor_role,
+            action_type=action_type,
+            resource_type="biometric",
+            resource_id=actor_id,
+            reason=reason,
+            severity=severity,
+            details=details or {},
+            source_ip=request.remote_addr,
+        )
+    except Exception:
+        pass
+
+
+def _get_valid_pending(pending_svc, token, endpoint):
+    """Validate a pending token; audit (warning) when it is unknown/expired/exhausted."""
+    try:
+        return pending_svc.get_valid(token)
+    except AuthenticationError:
+        # No user is known for an invalid token, so the actor is anonymous.
+        _bio_audit("anonymous", "anonymous", "verification",
+                   f"Fingerprint login rejected: invalid or expired pending token ({endpoint})",
+                   severity="warning", details={"endpoint": endpoint})
+        raise
+
+
 @auth_bp.route("/health", methods=["GET"])
 def auth_health():
     """Health check for auth service."""
@@ -110,6 +147,39 @@ def login():
     cfg = get_config(os.environ.get("FLASK_ENV", "development"))
     admin_mfa_required = bool(getattr(cfg, "ADMIN_MFA_REQUIRED", True))
 
+    # Step 1b - fingerprint second factor (additive). Only for admins with an
+    # enrolled fingerprint while BIOMETRIC_ENABLED and BIOMETRIC_LOGIN_ENABLED are
+    # on. Otherwise the existing TOTP / no-MFA behaviour below is unchanged.
+    if user["role"] == "admin" and _fingerprint_login_enabled(cfg):
+        from app.services.biometric_service import BiometricService
+        db = get_db()
+        bio = BiometricService(db)
+        if bio.is_enrolled(user["id"]):
+            raw_user = db["users"].find_one({"_id": user["id"]})
+            totp_enabled = bool(admin_mfa_required and raw_user and raw_user.get("mfa_enabled"))
+            mfa_code = str(data.get("mfa_code", "")).strip()
+            if not (totp_enabled and mfa_code):
+                # Withhold tokens; hand out a short-lived pending token instead.
+                from app.services.pending_login_service import (
+                    PendingLoginService, PENDING_LOGIN_TTL_SECONDS,
+                )
+                pending_token = PendingLoginService(db).create(user["id"])
+                provider = (bio.status(user["id"]) or {}).get("provider") or "secugen"
+                _bio_audit(
+                    user["id"], user["role"], "login",
+                    "Password accepted; fingerprint second factor required",
+                    details={"provider": provider, "totp_available": totp_enabled},
+                )
+                return jsonify({
+                    "mfa_required": True,
+                    "mfa_methods": ["totp", "fingerprint"] if totp_enabled else ["fingerprint"],
+                    "pending_token": pending_token,
+                    "pending_expires_in": PENDING_LOGIN_TTL_SECONDS,
+                    "fingerprint_provider": provider,
+                    "message": "Unlock with your fingerprint or enter your authenticator code.",
+                }), 200
+            # else: TOTP enabled and a code was supplied -> existing TOTP check below.
+
     if admin_mfa_required and user["role"] == "admin":
         db = get_db()
         raw_user = db["users"].find_one({"_id": user["id"]})
@@ -150,6 +220,99 @@ def login():
     )
 
     return jsonify(result), 200
+
+
+@auth_bp.route("/login/fingerprint/template", methods=["POST"])
+def login_fingerprint_template():
+    """
+    Release the admin's enrolled fingerprint template to the client so the
+    SecuGen local service can match it against a live scan.
+
+    Authorised by the pending token (minted only after a correct password).
+    PROTOTYPE LIMITATION: matching happens client-side; any client holding a valid
+    pending token receives the template, and the server later trusts the score the
+    client reports (see /login/fingerprint/verify).
+
+    Body: { "pending_token": "..." }
+    Returns: 200 {template, provider} | 401 invalid/expired | 403 disabled | 404
+    """
+    cfg = get_config(os.environ.get("FLASK_ENV", "development"))
+    if not _fingerprint_login_enabled(cfg):
+        return jsonify({"error": True, "message": "Fingerprint login is disabled"}), 403
+    data = request.get_json(silent=True) or {}
+    from app.services.pending_login_service import PendingLoginService
+    from app.services.biometric_service import BiometricService
+    db = get_db()
+    pending = _get_valid_pending(PendingLoginService(db), data.get("pending_token"), "template")
+    user_id = pending["user_id"]
+    tpl = BiometricService(db).get_template(user_id)
+    if not tpl:
+        return jsonify({"error": True, "message": "No fingerprint enrolled"}), 404
+    _bio_audit(user_id, "admin", "verification", "Fingerprint template released for login match",
+               details={"provider": tpl.get("provider")})
+    return jsonify(tpl), 200
+
+
+@auth_bp.route("/login/fingerprint/verify", methods=["POST"])
+def login_fingerprint_verify():
+    """
+    Complete an admin login with a fingerprint match score.
+
+    PROTOTYPE LIMITATION: the match is computed in the browser by the SecuGen local
+    service and this endpoint TRUSTS the reported score. Anyone who knows the admin's
+    password and can call this endpoint can submit a high score. Not tamper-proof.
+
+    Body: { "pending_token": "...", "score": 150, "provider": "secugen" }
+    Returns:
+        200: tokens (same shape as /login)
+        401: pending token invalid/expired/exhausted, or user not an active admin
+        403: fingerprint did not match (not 401, so the UI never mistakes it for
+             session loss) or the feature is disabled
+    A wrong score counts against the pending token (max 3), after which it is
+    deleted. Failed scores are NOT fed into the account lockout.
+    """
+    cfg = get_config(os.environ.get("FLASK_ENV", "development"))
+    if not _fingerprint_login_enabled(cfg):
+        return jsonify({"error": True, "message": "Fingerprint login is disabled"}), 403
+    data = request.get_json(silent=True) or {}
+    token = data.get("pending_token")
+    from app.services.pending_login_service import PendingLoginService
+    from app.services.biometric_service import BiometricService
+    db = get_db()
+    pending_svc = PendingLoginService(db)
+    pending = _get_valid_pending(pending_svc, token, "verify")
+    user_doc = db["users"].find_one({"_id": pending["user_id"]})
+    if not user_doc or user_doc.get("status") != "active" or user_doc.get("role") != "admin":
+        pending_svc.consume(token)
+        raise AuthenticationError("Login session expired or invalid. Please sign in again.")
+
+    provider = str(data.get("provider") or "").strip().lower()
+    min_score = int(getattr(cfg, "BIOMETRIC_MIN_SCORE", 80))
+    result = BiometricService(db).record_verification(
+        user_doc["_id"], data.get("score"), provider, min_score
+    )
+    if not result.get("verified"):
+        left = pending_svc.register_failure(token)
+        reason = result.get("reason", "Fingerprint did not match")
+        _bio_audit(user_doc["_id"], "admin", "verification",
+                   f"Fingerprint login FAILED: {reason}", severity="warning",
+                   details={"provider": provider, "attempts_left": left})
+        return jsonify({
+            "error": True, "verified": False, "reason": reason,
+            "message": reason, "attempts_left": left,
+        }), 403
+
+    pending_svc.consume(token)
+    tokens = _get_auth_service().issue_tokens_for_user(user_doc)
+    from app.services.audit_service import AuditService
+    AuditService(db).log_event(
+        actor_id=user_doc["_id"], actor_role="admin", action_type="login",
+        resource_type="auth", resource_id=user_doc["_id"],
+        reason="User login (password + fingerprint)", source_ip=request.remote_addr,
+    )
+    _bio_audit(user_doc["_id"], "admin", "verification", "Fingerprint login verified",
+               details={"provider": provider})
+    return jsonify(tokens), 200
 
 
 @auth_bp.route("/google", methods=["POST"])

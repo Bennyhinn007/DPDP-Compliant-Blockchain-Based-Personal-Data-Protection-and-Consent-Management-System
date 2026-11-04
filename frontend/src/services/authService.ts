@@ -9,6 +9,9 @@ import type { LoginResponse, User } from "@/types";
 export type LoginResult = LoginResponse & {
   mfa_required?: boolean;      // admin MFA enabled, code needed to continue
   mfa_setup_required?: boolean; // admin without MFA — steer to setup after login
+  mfa_methods?: ("totp" | "fingerprint")[];
+  pending_token?: string;       // opaque token for the fingerprint step
+  fingerprint_provider?: string;
 };
 
 export const authService = {
@@ -16,6 +19,29 @@ export const authService = {
     const body: Record<string, string> = { email, password };
     if (mfaCode) body.mfa_code = mfaCode;
     const { data } = await api.post<LoginResult>("/auth/login", body);
+    return data;
+  },
+
+  // Fingerprint second factor for admins (pending token from the password step).
+  // The match is computed client-side; the server trusts the reported score.
+  async fingerprintTemplate(pendingToken: string): Promise<{ template: string; provider: string }> {
+    const { data } = await api.post<{ template: string; provider: string }>(
+      "/auth/login/fingerprint/template",
+      { pending_token: pendingToken }
+    );
+    return data;
+  },
+
+  async fingerprintVerify(
+    pendingToken: string,
+    score: number,
+    provider: string
+  ): Promise<LoginResponse> {
+    const { data } = await api.post<LoginResponse>("/auth/login/fingerprint/verify", {
+      pending_token: pendingToken,
+      score,
+      provider,
+    });
     return data;
   },
 

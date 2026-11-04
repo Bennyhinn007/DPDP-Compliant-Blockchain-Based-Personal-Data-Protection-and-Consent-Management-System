@@ -68,6 +68,11 @@ class BaseConfig:
     BIOMETRIC_ENABLED = os.environ.get("BIOMETRIC_ENABLED", "true").lower() == "true"
     # Minimum match score accepted. Scales differ per vendor/SDK — tune per sensor.
     BIOMETRIC_MIN_SCORE = int(os.environ.get("BIOMETRIC_MIN_SCORE", "80"))
+    # Tuning: default 80. SecuGen recommends about 100 (of 199) for a strong match.
+    # Raise for stricter matching, lower for fewer false rejects.
+    # Fingerprint unlock at admin login (second factor). Needs BIOMETRIC_ENABLED too.
+    # Set to false to fall back to the old password/TOTP-only login.
+    BIOMETRIC_LOGIN_ENABLED = os.environ.get("BIOMETRIC_LOGIN_ENABLED", "true").lower() == "true"
 
     # ── SIH 26125 Identity & Asset Extension (ADDITIVE) ──────────────────
     # Master feature flag for the DID / smart-contract / NFT layer. When False,

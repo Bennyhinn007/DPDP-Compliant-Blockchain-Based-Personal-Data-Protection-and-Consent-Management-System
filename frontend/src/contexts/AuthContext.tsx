@@ -8,18 +8,25 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import { authService } from "@/services/authService";
 import { identityService } from "@/services/identityService";
 import { loadWallet, personalSign, deriveDid } from "@/lib/wallet";
+import { getProvider } from "@/lib/fingerprint";
 import type { User } from "@/types";
 
 /** Result of a password login: either succeeded, or an MFA code is required. */
 export type LoginOutcome =
   | { status: "ok"; user: User; mfaSetupRequired: boolean }
-  | { status: "mfa_required" };
+  | {
+      status: "mfa_required";
+      methods: string[];
+      pendingToken?: string;
+      fingerprintProvider?: string;
+    };
 
 interface AuthContextValue {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string, mfaCode?: string) => Promise<LoginOutcome>;
+  loginWithFingerprint: (pendingToken: string, provider: string) => Promise<User>;
   loginWithGoogle: (idToken: string) => Promise<User>;
   loginWithDid: () => Promise<User>;
   logout: () => void;
@@ -62,11 +69,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const result = await authService.login(email, password, mfaCode);
     // Admin MFA is enabled but no/invalid code yet → ask the UI to prompt.
     if (result.mfa_required) {
-      return { status: "mfa_required" };
+      return {
+        status: "mfa_required",
+        methods: result.mfa_methods ?? ["totp"],
+        pendingToken: result.pending_token,
+        fingerprintProvider: result.fingerprint_provider,
+      };
     }
     const u = persistSession(result);
     // Admin without MFA set up → logged in, but UI should steer to setup.
     return { status: "ok", user: u, mfaSetupRequired: !!result.mfa_setup_required };
+  };
+
+  /**
+   * Admin fingerprint unlock (second factor after the password step).
+   * The SecuGen local service captures and matches in the browser; the backend
+   * trusts the reported score (prototype limitation). Errors propagate to the caller.
+   */
+  const loginWithFingerprint = async (pendingToken: string, provider: string): Promise<User> => {
+    const fp = getProvider(provider);
+    const enrolled = await authService.fingerprintTemplate(pendingToken);
+    const live = await fp.capture();
+    const score = await fp.match(enrolled.template, live.template);
+    const result = await authService.fingerprintVerify(pendingToken, score, fp.id);
+    return persistSession(result);
   };
 
   const loginWithGoogle = async (idToken: string): Promise<User> => {
@@ -111,6 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user,
         isLoading,
         login,
+        loginWithFingerprint,
         loginWithGoogle,
         loginWithDid,
         logout,

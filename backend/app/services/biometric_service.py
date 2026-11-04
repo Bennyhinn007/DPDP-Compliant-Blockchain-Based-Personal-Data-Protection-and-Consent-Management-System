@@ -20,6 +20,8 @@ tamper-proof against a malicious client. Labeled as a prototype second factor.
 
 from __future__ import annotations
 
+import math
+
 import base64
 import binascii
 from typing import Optional
@@ -119,6 +121,8 @@ class BiometricService:
             score = float(score)
         except (TypeError, ValueError):
             raise ValidationError("score must be a number")
+        if not math.isfinite(score):
+            raise ValidationError("score must be a finite number")
         if score < min_score:
             return {"verified": False, "reason": "Fingerprint did not match",
                     "min_score": min_score}

@@ -34,6 +34,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageLoader } from "@/components/shared/PageLoader";
 import { MFASetupPanel } from "@/components/mfa/MFASetupPanel";
 import { BiometricPanel } from "@/components/mfa/BiometricPanel";
+import { FingerprintPanel } from "@/components/mfa/FingerprintPanel";
 import { formatDateTime, humanize } from "@/lib/utils";
 
 export function ProfilePage() {
@@ -197,6 +198,9 @@ export function ProfilePage() {
 
       {/* Biometric Panel (Admin/DPO only) */}
       {(user.role === "admin" || user.role === "dpo") && <BiometricPanel />}
+
+      {/* SecuGen fingerprint enroll/verify/remove (Admin only) */}
+      {user.role === "admin" && <FingerprintPanel />}
 
       {/* Patient-specific: Records + Consents + Activity */}
       {user.role === "patient" && (

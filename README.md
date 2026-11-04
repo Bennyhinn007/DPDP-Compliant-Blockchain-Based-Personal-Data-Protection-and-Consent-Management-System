@@ -218,6 +218,31 @@ physical card — and any DID can be **instantly revoked**.
 
 ---
 
+## 🖐 Fingerprint (SecuGen) second factor for admins
+
+Admins can unlock login with a SecuGen fingerprint reader (in addition to, not instead of, the authenticator-app code).
+
+**Setup**
+1. Request the free **SecuGen WebAPI** (60-day trial) from SecuGen's download request form and install it. It installs the `SgiBioSrv` Windows service that talks to the reader.
+2. Open `https://localhost:8443` once in the browser and accept the certificate.
+3. If SecuGen emails a license string, set `VITE_SECUGEN_LICSTR` in `frontend/.env`.
+4. Sign in as an admin, open **Profile → Fingerprint (SecuGen)** and enroll (two scans must match).
+
+The SecuGen service runs on the admin's own PC, so this only works on the machine with the reader attached. A deployed HTTPS site can still call `https://localhost:8443` on that PC (both are HTTPS, so no mixed-content block; CORS is handled by the SecuGen service).
+
+**Backend flags:** `BIOMETRIC_ENABLED` (default `true`), `BIOMETRIC_LOGIN_ENABLED` (default `true`, fingerprint unlock at login), `BIOMETRIC_MIN_SCORE` (default `80`; SecuGen recommends about 100 of 199 for a strong match).
+
+**Login flow:** password → (admin with an enrolled fingerprint) server withholds tokens and returns a short-lived, single-use `pending_token` (120s, 3 attempts) → fingerprint scan **or** authenticator code → JWT. Admins without an enrolled fingerprint keep the existing TOTP / no-MFA behaviour.
+
+**Endpoints:** `/api/v1/biometric/*` (status, enroll, template, verify, remove; admin session) and `/api/v1/auth/login/fingerprint/template|verify` (authorised by the pending token). Enroll/verify/remove and login attempts are audited with `resource_type="biometric"`.
+
+**Prototype limitations (honest):**
+- Matching is done **client-side** by the SecuGen local service; the server **trusts the reported score**. Someone with the admin's password who can call the API could submit a high score. The enrolled template is also released to a client holding a valid pending token.
+- Recovery risk: an admin whose only second factor is a fingerprint, on a PC without the reader, cannot log in. Keep TOTP enabled, or set `BIOMETRIC_LOGIN_ENABLED=false`.
+- The Mantra MFS100 adapter is a stub and not implemented.
+
+---
+
 ## 🧠 Cryptography at a glance
 
 | Purpose | Primitive | Notes |
@@ -384,6 +409,8 @@ docker-compose up --build
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | POST | `/api/v1/auth/login` | — | Login → JWT |
+| POST | `/api/v1/auth/login/fingerprint/template` | Pending token | Admin fingerprint login: get enrolled template |
+| POST | `/api/v1/auth/login/fingerprint/verify` | Pending token | Admin fingerprint login: submit match score → JWT |
 | POST | `/api/v1/auth/google` | — | Google OAuth login |
 | POST | `/api/v1/auth/rfid-verify` | — | Verify an RFID card tap |
 | GET | `/api/v1/patients/me/records` | Patient | Own health records |
@@ -523,6 +550,7 @@ dpdp_kiro/
 - The `did:rakshaid:` DID method is a **project-specific prototype**, not an interoperable production DID network (e.g. ION/Sovrin).
 - The chameleon-hash **primitive is real and benchmarked**; the redaction **workflow** is a simulation layer for demonstration.
 - Sepolia is **supported and deployable** (config + deploy script + docs); it is not auto-deployed by this repo.
+- Fingerprint login is **prototype-grade**: matching runs in the browser via the SecuGen local service and the server trusts the reported score.
 - Browser key custody is **prototype-grade** (localStorage); hardware-wallet / HSM custody is noted future work.
 
 ---
