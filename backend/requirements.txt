@@ -18,7 +18,7 @@ eth-account==0.13.4
 web3==7.6.0
 
 # Encryption
-pycryptodome==3.21.0
+pycryptodome==4.2.0
 cryptography==44.0.3
 
 # Validation
