@@ -46,4 +46,4 @@ pytest==8.3.5
 mongomock==4.3.0
 
 # Benchmarking (optional — for benchmarks/benchmark_chameleon.py charts)
-matplotlib==3.10.0
+matplotlib==3.11.2
