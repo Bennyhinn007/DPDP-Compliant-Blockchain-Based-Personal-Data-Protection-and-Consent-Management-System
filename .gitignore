@@ -28,6 +28,7 @@ docker-compose.override.yml
 backend/keystore/
 *.pem
 *.key
+hardware/**/secrets.h
 
 # MongoDB
 data/

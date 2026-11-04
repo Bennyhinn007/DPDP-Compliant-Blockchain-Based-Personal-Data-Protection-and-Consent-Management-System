@@ -9,7 +9,7 @@ mongod
 # Start Ganache (optional but recommended for blockchain features)
 npx ganache --deterministic --chain.chainId 1337
 
-# Seed demo data
+# Seed demo data (passwords come from SEED_* env vars, or are generated and printed once)
 cd backend && python seeds/seed_demo.py
 
 # Start backend
@@ -49,7 +49,7 @@ Staff registers patient  →  Doctor creates record  →  DPDP protects  →  Pa
 ### Step 1 — Hospital Registration Staff registers the patient (account origin)
 
 - Log in as the **admin** (acting as the hospital registration desk) —
-  `admin@dpdp-health.in` / `Admin@Secure123`.
+  `admin@dpdp-health.in` (password: the `SEED_ADMIN_PASSWORD` you set, or the one printed by the seeder).
 - Open **Register Patient**. Narrate: *this is the hospital front desk creating the
   patient's account — not clinical data.*
 - Fill name, email, an initial password, and demographics (phone, blood group,
@@ -61,7 +61,7 @@ Staff registers patient  →  Doctor creates record  →  DPDP protects  →  Pa
 ### Step 2 — Doctor creates the clinical record (data origin)
 
 - Log in as the **doctor** (the Healthcare Provider) —
-  `dr.rahul@citycare.in` / `Doctor@123`.
+  `dr.rahul@citycare.in` (password printed by the seeder).
 - The dashboard header reads **"CityCare Hospital — Healthcare Provider Portal"**,
   "Logged in as Dr. …". Narrate: *this is the hospital's clinician authoring data
   at the point of care.*
@@ -122,7 +122,7 @@ performed:
 ### 2. Patient Registration & Login (2 min)
 
 - Click "Register" link
-- Register new patient OR login with: `rajesh.kumar@gmail.com` / `Patient@123`
+- Register new patient OR login with: `rajesh.kumar@gmail.com` (password printed by the seeder)
 - Show the patient dashboard with:
   - Privacy Score
   - Active Consents (4)
@@ -181,7 +181,7 @@ performed:
 
 ### 8. DPO/Admin Dashboard (1 min)
 
-- Login as admin: `admin@dpdp-health.in` / `Admin@Secure123`
+- Login as admin: `admin@dpdp-health.in` (password: the `SEED_ADMIN_PASSWORD` you set, or the one printed by the seeder)
 - Show Compliance & Governance Center:
   - Compliance Score gauge
   - System metrics (patients, records, anchors)

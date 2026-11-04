@@ -148,7 +148,7 @@ class TestingConfig(BaseConfig):
     MONGO_DB_NAME = "dpdp_healthcare_test"
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=5)
     BCRYPT_COST_FACTOR = 4  # Faster hashing for tests
-    ENCRYPTION_KEY = "ALqZ-f2S9tSruxC8YlTTInzGCYgFkTFztlerw8nxsyk="  # Stable test key
+    ENCRYPTION_KEY = "ALqZ-f2S9tSruxC8YlTTInzGCYgFkTFztlerw8nxsyk="  # test-only key, never used outside the test suite
 
 
 class ProductionConfig(BaseConfig):

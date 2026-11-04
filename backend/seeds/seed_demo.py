@@ -20,9 +20,27 @@ Creates:
 
 import sys
 import os
+import secrets
+import string
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def _gen_password(length: int = 16) -> str:
+    """Strong random password (upper, lower, digit, symbol) for demo accounts."""
+    alphabet = string.ascii_letters + string.digits
+    symbols = "@#$%&*!"
+    while True:
+        pwd = "".join(secrets.choice(alphabet + symbols) for _ in range(length))
+        if (any(c.islower() for c in pwd) and any(c.isupper() for c in pwd)
+                and any(c.isdigit() for c in pwd) and any(c in symbols for c in pwd)):
+            return pwd
+
+
+def _seed_password(env_var: str) -> str:
+    """Read a demo password from the environment, else generate a random one."""
+    return os.environ.get(env_var) or _gen_password()
 
 from app import create_app
 from app.extensions import get_db
@@ -67,29 +85,43 @@ def seed():
         # ─── USERS ────────────────────────────────────────────────
         print("Creating users...")
 
+        # Passwords come from SEED_* environment variables; if unset, a strong
+        # random one is generated and printed once (see summary at the end).
+        admin_pwd = _seed_password("SEED_ADMIN_PASSWORD")
+        doctor_pwd = _seed_password("SEED_DOCTOR_PASSWORD")
+        staff_pwd = _seed_password("SEED_STAFF_PASSWORD")
+        patient_pwd = _seed_password("SEED_PATIENT_PASSWORD")
+        credentials = []  # (email, password, role) for the one-time summary
+
         # Admin
-        admin = auth.register("admin@dpdp-health.in", "Admin@Secure123", "admin", "Dr. Kaushalya (DPO)")
-        print(f"  ✓ Admin: admin@dpdp-health.in / Admin@Secure123")
+        admin = auth.register("admin@dpdp-health.in", admin_pwd, "admin", "Dr. Kaushalya (DPO)")
+        credentials.append(("admin@dpdp-health.in", admin_pwd, "admin"))
+        print("  ✓ Admin: admin@dpdp-health.in")
 
         # Doctor (Healthcare Provider) — logs into the Provider Portal to create records
-        doctor = auth.register("dr.rahul@citycare.in", "Doctor@123", "doctor", "Dr. Rahul Sharma")
-        print(f"  ✓ Doctor: dr.rahul@citycare.in / Doctor@123")
+        doctor = auth.register("dr.rahul@citycare.in", doctor_pwd, "doctor", "Dr. Rahul Sharma")
+        credentials.append(("dr.rahul@citycare.in", doctor_pwd, "doctor"))
+        print("  ✓ Doctor: dr.rahul@citycare.in")
 
         # Registration Staff (hospital front desk) — restricted portal: register patients only
-        reg_staff = auth.register("reception@citycare.in", "Staff@123", "registration_staff", "Reception Desk")
-        print(f"  ✓ Registration Staff: reception@citycare.in / Staff@123")
+        reg_staff = auth.register("reception@citycare.in", staff_pwd, "registration_staff", "Reception Desk")
+        credentials.append(("reception@citycare.in", staff_pwd, "reg.staff"))
+        print("  ✓ Registration Staff: reception@citycare.in")
 
         # Patient 1
-        p1 = auth.register("rajesh.kumar@gmail.com", "Patient@123", "patient", "Rajesh Kumar")
-        print(f"  ✓ Patient: rajesh.kumar@gmail.com / Patient@123")
+        p1 = auth.register("rajesh.kumar@gmail.com", patient_pwd, "patient", "Rajesh Kumar")
+        credentials.append(("rajesh.kumar@gmail.com", patient_pwd, "patient"))
+        print("  ✓ Patient: rajesh.kumar@gmail.com")
 
         # Patient 2
-        p2 = auth.register("priya.sharma@gmail.com", "Patient@456", "patient", "Priya Sharma")
-        print(f"  ✓ Patient: priya.sharma@gmail.com / Patient@456")
+        p2 = auth.register("priya.sharma@gmail.com", patient_pwd, "patient", "Priya Sharma")
+        credentials.append(("priya.sharma@gmail.com", patient_pwd, "patient"))
+        print("  ✓ Patient: priya.sharma@gmail.com")
 
         # Patient 3
-        p3 = auth.register("amit.patel@gmail.com", "Patient@789", "patient", "Amit Patel")
-        print(f"  ✓ Patient: amit.patel@gmail.com / Patient@789")
+        p3 = auth.register("amit.patel@gmail.com", patient_pwd, "patient", "Amit Patel")
+        credentials.append(("amit.patel@gmail.com", patient_pwd, "patient"))
+        print("  ✓ Patient: amit.patel@gmail.com")
 
         print()
 
@@ -130,16 +162,16 @@ def seed():
         # that already exist so re-running the seed won't error.
         print("Creating 10 additional demo patients...")
         extra_patients = [
-            ("sneha.iyer@gmail.com",     "Patient@1001", "Sneha Iyer",      "+91-9801100011", "O+",  ["Latex"],        ["Asthma"],            "12 Anna Salai, Chennai, Tamil Nadu 600002"),
-            ("vikram.singh@gmail.com",   "Patient@1002", "Vikram Singh",    "+91-9801100012", "B-",  [],               ["Hypertension"],      "88 Sector 17, Chandigarh 160017"),
-            ("ananya.das@gmail.com",     "Patient@1003", "Ananya Das",      "+91-9801100013", "A-",  ["Peanuts"],      [],                    "5 Park Street, Kolkata, West Bengal 700016"),
-            ("rohan.mehta@gmail.com",    "Patient@1004", "Rohan Mehta",     "+91-9801100014", "AB+", [],               ["Diabetes Type 2"],   "23 CG Road, Ahmedabad, Gujarat 380009"),
-            ("fatima.khan@gmail.com",    "Patient@1005", "Fatima Khan",     "+91-9801100015", "O-",  ["Sulfa drugs"],  ["Thyroid"],           "9 Charminar Road, Hyderabad, Telangana 500002"),
-            ("arjun.nair@gmail.com",     "Patient@1006", "Arjun Nair",      "+91-9801100016", "B+",  [],               [],                    "31 Marine Drive, Kochi, Kerala 682031"),
-            ("meera.pillai@gmail.com",   "Patient@1007", "Meera Pillai",    "+91-9801100017", "A+",  ["Penicillin"],   ["Migraine"],          "14 FC Road, Pune, Maharashtra 411004"),
-            ("kabir.verma@gmail.com",    "Patient@1008", "Kabir Verma",     "+91-9801100018", "O+",  [],               [],                    "60 Hazratganj, Lucknow, Uttar Pradesh 226001"),
-            ("isha.gupta@gmail.com",     "Patient@1009", "Isha Gupta",      "+91-9801100019", "AB-", ["Aspirin"],      ["Anemia"],            "27 Civil Lines, Jaipur, Rajasthan 302006"),
-            ("dev.reddy@gmail.com",      "Patient@1010", "Dev Reddy",       "+91-9801100020", "B+",  [],               ["Hypertension"],      "40 Banjara Hills, Hyderabad, Telangana 500034"),
+            ("sneha.iyer@gmail.com",     patient_pwd, "Sneha Iyer",      "+91-9801100011", "O+",  ["Latex"],        ["Asthma"],            "12 Anna Salai, Chennai, Tamil Nadu 600002"),
+            ("vikram.singh@gmail.com",   patient_pwd, "Vikram Singh",    "+91-9801100012", "B-",  [],               ["Hypertension"],      "88 Sector 17, Chandigarh 160017"),
+            ("ananya.das@gmail.com",     patient_pwd, "Ananya Das",      "+91-9801100013", "A-",  ["Peanuts"],      [],                    "5 Park Street, Kolkata, West Bengal 700016"),
+            ("rohan.mehta@gmail.com",    patient_pwd, "Rohan Mehta",     "+91-9801100014", "AB+", [],               ["Diabetes Type 2"],   "23 CG Road, Ahmedabad, Gujarat 380009"),
+            ("fatima.khan@gmail.com",    patient_pwd, "Fatima Khan",     "+91-9801100015", "O-",  ["Sulfa drugs"],  ["Thyroid"],           "9 Charminar Road, Hyderabad, Telangana 500002"),
+            ("arjun.nair@gmail.com",     patient_pwd, "Arjun Nair",      "+91-9801100016", "B+",  [],               [],                    "31 Marine Drive, Kochi, Kerala 682031"),
+            ("meera.pillai@gmail.com",   patient_pwd, "Meera Pillai",    "+91-9801100017", "A+",  ["Penicillin"],   ["Migraine"],          "14 FC Road, Pune, Maharashtra 411004"),
+            ("kabir.verma@gmail.com",    patient_pwd, "Kabir Verma",     "+91-9801100018", "O+",  [],               [],                    "60 Hazratganj, Lucknow, Uttar Pradesh 226001"),
+            ("isha.gupta@gmail.com",     patient_pwd, "Isha Gupta",      "+91-9801100019", "AB-", ["Aspirin"],      ["Anemia"],            "27 Civil Lines, Jaipur, Rajasthan 302006"),
+            ("dev.reddy@gmail.com",      patient_pwd, "Dev Reddy",       "+91-9801100020", "B+",  [],               ["Hypertension"],      "40 Banjara Hills, Hyderabad, Telangana 500034"),
         ]
         extra_created = 0
         extra_profiles = []  # (patient_id, user_id, name, chronic[]) for record seeding
@@ -160,7 +192,8 @@ def seed():
             })
             extra_profiles.append((prof["_id"], u["id"], name, chronic))
             extra_created += 1
-            print(f"  ✓ Patient: {email} / {pwd}")
+            credentials.append((email, pwd, "patient"))
+            print(f"  ✓ Patient: {email}")
         print(f"  ✓ {extra_created} additional patients created\n")
 
         # ─── PROVIDER-AUTHORED RECORDS for the extra patients ─────
@@ -403,6 +436,9 @@ def seed():
         print("=" * 60)
         print("  SEEDING COMPLETE")
         print("=" * 60)
+        creds_table = "\n".join(
+            f"    {role:<10} {email:<32} {pwd}" for email, pwd, role in credentials
+        )
         print(f"""
   Database: {db.name}
   Users:              {db['users'].count_documents({})}
@@ -415,17 +451,8 @@ def seed():
   Version History:    {db['version_history'].count_documents({})}
   Chameleon Records:  {db['chameleon_hash_records'].count_documents({})}
 
-  Login Credentials:
-  ┌────────────────────────────────┬───────────────────┬─────────┐
-  │ Email                          │ Password          │ Role    │
-  ├────────────────────────────────┼───────────────────┼─────────┤
-  │ admin@dpdp-health.in           │ Admin@Secure123   │ admin   │
-  │ dr.rahul@citycare.in           │ Doctor@123        │ doctor  │
-  │ reception@citycare.in          │ Staff@123         │ reg.staff│
-  │ rajesh.kumar@gmail.com         │ Patient@123       │ patient │
-  │ priya.sharma@gmail.com         │ Patient@456       │ patient │
-  │ amit.patel@gmail.com           │ Patient@789       │ patient │
-  └────────────────────────────────┴───────────────────┴─────────┘
+  Login Credentials (shown once; store them securely):
+{creds_table}
 """)
 
 

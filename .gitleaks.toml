@@ -1,0 +1,13 @@
+title = "DPDP Healthcare gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Test-only fixtures; never used outside the test suite"
+paths = [
+  '''backend/app/config\.py''',
+  '''backend/tests/''',
+  '''\.env\.example$''',
+  '''package-lock\.json$''',
+]

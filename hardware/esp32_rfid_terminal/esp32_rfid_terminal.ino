@@ -47,14 +47,14 @@
 
 MFRC522 rfid(SS_PIN, RST_PIN);
 
-// ================= FILL THESE IN =================
-const char* WIFI_SSID     = "Redmi Note 14 Pro+ 5G";
-const char* WIFI_PASSWORD = "benny2005";
-
+// ================= SETUP =================
+// WIFI_SSID, WIFI_PASSWORD and BACKEND_HOST live in secrets.h (gitignored).
+// First time: copy secrets.example.h to secrets.h and fill in your values.
+//
 // We resolve the PC by its hostname (mDNS) instead of a hard-coded IP, so the
 // ESP32 keeps working even when the laptop's IP changes — flash ONCE, never
 // edit again. BACKEND_HOST is your PC name WITHOUT the ".local" suffix.
-const char* BACKEND_HOST  = "ASUS-VIVOBOOK-15";   // -> resolves ASUS-VIVOBOOK-15.local
+#include "secrets.h"
 const int   BACKEND_PORT  = 5000;
 const char* BACKEND_PATH  = "/api/v1/auth/rfid-verify";
 // =================================================
