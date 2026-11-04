@@ -1,565 +1,294 @@
 <div align="center">
 
-<img src="docs/assets/logo.png" alt="DPDP Health logo" width="130" />
+<img src="docs/assets/logo.png" alt="DPDP Health logo" width="120" />
 
-# Blockchain Platform for Identity, Access Control & Digital-Asset Ownership
-### built on a DPDP-Compliant, Privacy-First Healthcare Foundation
+# DPDP-Compliant Blockchain-Based Personal Data Protection and Consent Management System
 
-<a href="https://git.io/typing-svg">
-  <img src="https://readme-typing-svg.demolab.com?font=Inter&weight=600&size=22&pause=1000&color=6366F1&center=true&vCenter=true&width=860&lines=Decentralized+Identity+(DID)+%2B+Passwordless+Login;On-Chain+RBAC+%2B+ERC-721+Digital+Asset+Ownership;Privacy+Off-Chain+%E2%80%94+Trust+On-Chain;Real+Chameleon-Hash+Redactable+Blockchain;RFID+2FA+%2B+AES-256+%2B+Consent+Management" alt="Typing SVG" />
-</a>
-
-<p>
-  <em>A trustless platform where identities are cryptographically verifiable, access is
-  enforced by smart contracts, and digital-asset ownership lives on-chain as NFTs —
-  while all sensitive data stays <strong>encrypted and off-chain</strong>.</em>
-</p>
-
-<p>
-  <a href="https://github.com/Bennyhinn007/DPDP-Compliant-Blockchain-Based-Personal-Data-Protection-and-Consent-Management-System/actions/workflows/ci.yml">
-    <img src="https://github.com/Bennyhinn007/DPDP-Compliant-Blockchain-Based-Personal-Data-Protection-and-Consent-Management-System/actions/workflows/ci.yml/badge.svg" alt="CI" />
-  </a>
-  <img src="https://img.shields.io/badge/backend%20tests-214%20passing-16A34A?logo=pytest&logoColor=white" alt="Backend Tests" />
-  <img src="https://img.shields.io/badge/contract%20tests-20%20passing-16A34A?logo=ethereum&logoColor=white" alt="Contract Tests" />
-  <img src="https://img.shields.io/badge/DPDP%20Act-2023-6366F1" alt="DPDP" />
-  <img src="https://img.shields.io/badge/SIH-PS%2026125-FF6B00" alt="SIH" />
-  <img src="https://img.shields.io/badge/license-Academic-475569" alt="License" />
-</p>
-
-<p>
-  <img src="https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black" />
-  <img src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white" />
-  <img src="https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white" />
-  <img src="https://img.shields.io/badge/Flask-3-000000?logo=flask&logoColor=white" />
-  <img src="https://img.shields.io/badge/Solidity-0.8.24-363636?logo=solidity&logoColor=white" />
-  <img src="https://img.shields.io/badge/OpenZeppelin-5.x-4E5EE4?logo=openzeppelin&logoColor=white" />
-  <img src="https://img.shields.io/badge/MongoDB-7-47A248?logo=mongodb&logoColor=white" />
-  <img src="https://img.shields.io/badge/Ethereum-Ganache%20%2F%20Sepolia-3C3C3D?logo=ethereum&logoColor=white" />
-  <img src="https://img.shields.io/badge/ESP32-RFID-E7352C?logo=espressif&logoColor=white" />
-</p>
+[![CI](https://github.com/Bennyhinn007/DPDP-Compliant-Blockchain-Based-Personal-Data-Protection-and-Consent-Management-System/actions/workflows/ci.yml/badge.svg)](https://github.com/Bennyhinn007/DPDP-Compliant-Blockchain-Based-Personal-Data-Protection-and-Consent-Management-System/actions/workflows/ci.yml)
+![DPDP Act](https://img.shields.io/badge/DPDP%20Act-2023-6366F1)
+![SIH](https://img.shields.io/badge/SIH-PS%2026125-FF6B00)
+![Python](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-3-000000?logo=flask&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
+![Solidity](https://img.shields.io/badge/Solidity-0.8.24-363636?logo=solidity&logoColor=white)
+![Network](https://img.shields.io/badge/Ethereum-Sepolia-3C3C3D?logo=ethereum&logoColor=white)
 
 </div>
 
----
+A healthcare personal-data protection and consent management platform aligned with India's **Digital Personal Data Protection (DPDP) Act, 2023**. Patient records are encrypted at rest and anchored on a **redactable (chameleon-hash) blockchain**, so consent, access, correction and erasure rights can be honoured without breaking the audit trail. On top of this sits the **SIH 26125 identity, access and asset layer**: decentralized identifiers (DIDs), on-chain role-based access control, and ERC-721 asset NFTs.
 
-## 🎯 What this is
+> Core principle: **privacy off-chain, trust on-chain.** Personal and health data stays encrypted in MongoDB. Only hashes, DIDs, roles and token references touch the blockchain. Healthcare records are never NFTs.
 
-This project answers **SIH 2026 Problem Statement 26125 (Bharat Electronics Limited)** —
-*"Blockchain-Based Secure Platform for Identity, Access Control, and Digital Asset
-Management"* — and builds it on top of a **real, working DPDP-compliant privacy
-platform**.
+## Contents
 
-Centralized identity systems are a single point of failure: one breach of the
-password store exposes everyone, and asset ownership scattered across disconnected
-systems is hard to verify. This platform removes that weakness:
+- [Live demo](#live-demo)
+- [Key features](#key-features)
+- [Architecture](#architecture)
+- [Tech stack](#tech-stack)
+- [Smart contracts (Sepolia)](#smart-contracts-sepolia)
+- [Demo accounts](#demo-accounts)
+- [Getting started locally](#getting-started-locally)
+- [Environment variables](#environment-variables)
+- [Hardware](#hardware)
+- [Deployment](#deployment)
+- [Security notes and limitations](#security-notes-and-limitations)
+- [Documentation](#documentation)
+- [Project structure](#project-structure)
+- [License and acknowledgements](#license-and-acknowledgements)
 
-- **No central password store to steal** — users prove identity with a private key held on their own device.
-- **Access enforced on-chain** — smart contracts, not just the app, decide who can do what.
-- **Ownership is provable and un-fakeable** — digital assets are NFTs bound to identities.
-- **Privacy is preserved** — sensitive/personal data stays encrypted off-chain; only proofs go on-chain.
+## Live demo
 
-> ### Core principle: **Privacy Off-Chain · Trust On-Chain**
-> Health/personal data is AES-256 encrypted in MongoDB. Only hashes, DIDs, roles,
-> token IDs, ownership references, and events touch the blockchain. **Healthcare
-> records are never NFTs and never stored on-chain.**
-
-<div align="center">
-
-| 🪪 Decentralized ID | 🛡️ On-Chain RBAC | 🎟️ NFT Ownership | 🔐 Privacy-First |
-|:---:|:---:|:---:|:---:|
-| secp256k1 DID + passwordless login (+ optional RFID 2FA) | Admin / Manager / Auditor / User enforced by smart contract | ERC-721 assets linked to identities | Encrypted off-chain data · no PHI on-chain |
-
-</div>
-
----
-
-## 🌐 Live Deployment
-
-| | |
+| | Link |
 |---|---|
-| **Live app** | https://dpdphealthcare.bennyhinn.dev |
-| **Frontend** | Vercel (React/Vite static build) |
-| **Backend** | Render (Flask + gunicorn) · health check `/health` |
-| **Database** | MongoDB Atlas |
-| **Blockchain** | Ethereum **Sepolia** testnet (SIH identity/access/asset contracts) |
+| Frontend | https://dpdphealthcare.bennyhinn.dev |
+| Backend health | https://dpdp-backend-4zto.onrender.com/health |
 
-**Deployed SIH contracts (Sepolia):**
+The backend runs on Render's free tier and can take up to about a minute to wake after idling. A GitHub Action pings `/health` every 10 minutes to reduce this.
 
-| Contract | Address | Explorer |
-|---|---|---|
-| PlatformAccessControl | `0xb959ae2C2e357a92fd8736eFDf69305Acf025C84` | [etherscan](https://sepolia.etherscan.io/address/0xb959ae2C2e357a92fd8736eFDf69305Acf025C84) |
-| IdentityRegistry | `0x80d91274844d78fC2CE9aE84Dd3871B3D415a9A1` | [etherscan](https://sepolia.etherscan.io/address/0x80d91274844d78fC2CE9aE84Dd3871B3D415a9A1) |
-| AssetNFT | `0x7a44a8D353cDf05fd2c93c7c822BAF11F1348651` | [etherscan](https://sepolia.etherscan.io/address/0x7a44a8D353cDf05fd2c93c7c822BAF11F1348651) |
+## Key features
 
-> All runtime secrets (DB URI, keys, RPC URL, wallet key) live in platform
-> environment variables — never in this repo. Contract addresses are public.
+**Consent and patient rights**
+- Purpose-bound consent management: grant, modify and revoke, with blockchain-anchored receipts.
+- Right to access (Personal Data Center and export), correction and erasure, implemented through the redactable chameleon-hash blockchain.
+- Immutable, hash-chained audit trail, plus a DPDP compliance score.
 
+**Data protection**
+- Fernet (AES-based) field-level encryption at rest; MongoDB stores ciphertext only.
+- Record integrity anchored on-chain (SHA-256) with a live tamper-attempt demo.
 
----
+**Role portals**
+- Admin / DPO, doctor (healthcare provider), registration staff and patient portals.
 
-## 🧩 The two layers (Add, Don't Replace)
+**Authentication and presence**
+- Email/password and Google sign-in.
+- Passwordless DID login: sign an EIP-191 challenge with a key that stays in the browser.
+- Admin MFA: Google Authenticator (TOTP), mandatory for admins (`ADMIN_MFA_REQUIRED`).
+- Admin fingerprint second factor: SecuGen U20 through SecuGen WebAPI. Prototype: matching is client-side and the server trusts the reported score.
+- ESP32 + RC522 RFID physical-presence verification for sensitive actions (such as record erasure), with an optional RFID second factor for DID login.
 
-The platform is **one system with two cohesive layers** that share a single backend,
-database, and UI:
+**Identity, access and assets (SIH 26125)**
+- DIDs (`did:rakshaid:`, a prototype method), on-chain RBAC (`PlatformAccessControl`), ERC-721 asset NFTs (`AssetNFT`) with a no-PHI metadata guard.
+- Smart contracts deployed on Ethereum Sepolia. The whole layer is behind the `SIH_FEATURES_ENABLED` flag.
 
-```
-        DPDP Healthcare Privacy Platform  (existing, primary foundation)
-                              +
-   DID Identity  +  On-Chain RBAC  +  NFT Asset Ownership  +  Smart Contracts
-                              +
-                     Immutable Dual Audit
-                              =
-              Unified Secure Identity & Asset Platform
-```
-
-- The **SIH identity/access/asset layer** is fully **additive** — it never renames or
-  removes existing healthcare roles or workflows.
-- It is **feature-flagged** (`SIH_FEATURES_ENABLED`): disable it and the pure DPDP
-  healthcare platform runs unchanged.
-- A **DID is optional per user** — anyone without one uses every existing workflow as before.
-
----
-
-## 🚀 Feature Highlights
-
-### 🔗 SIH 26125 — Identity, Access & Digital Assets
-
-| Feature | What it does |
-|---------|--------------|
-| 🪪 **Decentralized Identity (DID)** | Client-side `secp256k1` keypair → `did:rakshaid:<id>`; the **private key never leaves the browser** *(prototype DID method)* |
-| 🔑 **Passwordless DID Login** | Log in by signing an **EIP-191** challenge — no password sent; issues the same JWT as normal login |
-| 🪪➕ **Optional RFID 2FA** | Config flag adds a **physical card tap** as a second factor to DID login (key + presence) |
-| 🛡️ **On-Chain RBAC** | `PlatformAccessControl` is the single role authority; critical ops are **dual-enforced** (backend **and** contract) |
-| 🎟️ **ERC-721 Digital Assets** | `AssetNFT` — admin-gated mint, assign, controlled transfer; each NFT bound to an owner DID |
-| 🚫 **No-PHI Guard** | Rejects any asset metadata that looks like personal/medical data — records can never become NFTs |
-| ⛓️ **Dual Audit** | Every contract event is recorded **on-chain** and in the existing hash-chained log |
-| 🌐 **Ganache + Sepolia** | Deploys to local Ganache; **Sepolia-ready** via env-configured addresses *(supported, not auto-deployed)* |
-
-### 🩺 DPDP Healthcare Privacy Foundation
-
-| Feature | What it does |
-|---------|--------------|
-| 🦎 **Real Chameleon Hashing** | `CH(m,r) = g^m·y^r mod p` — authorized redaction via trapdoor collision, benchmarked *(real primitive; redaction workflow is a simulation layer)* |
-| 🔒 **AES-256 Field Encryption** | Fernet field-level encryption; MongoDB stores ciphertext only |
-| 📜 **Consent Management** | 6 consent types with blockchain-anchored receipts; grant / modify / withdraw |
-| ⛓️ **SHA-256 Anchoring** | Record integrity anchored on Ganache **or** Sepolia (separate subsystem from SIH keccak256) |
-| 🪪 **RFID Physical-Presence** | ESP32 + RC522 card tap gates sensitive/DPO actions; green/red status LEDs + configurable validity window (default 25s) |
-| 🔑 **Google OAuth + MFA** | Passwordless Google sign-in and TOTP MFA alongside email/password |
-| 📊 **Compliance Scoring** | Real-time DPDP compliance score (0–100) with breakdown |
-
----
-
-## 🏗️ Architecture
+## Architecture
 
 ```mermaid
-graph TB
-    subgraph Client["🖥️ Client"]
-        FE[React + TypeScript + Tailwind]
-        WALLET[🔑 Browser DID Wallet<br/>secp256k1 · EIP-191]
-        RFID[🪪 ESP32 RFID Terminal]
-    end
-    subgraph Gateway["🚪 Auth & Gateway"]
-        JWT[JWT Validator]
-        DID[DID Challenge / Verify]
-        RBAC[RBAC + Consent Engine]
-        PRES[Physical-Presence Gate]
-    end
-    subgraph App["⚙️ Application · Flask"]
-        AUTH[Auth / OAuth / MFA]
-        HC[Healthcare · Consent · Encryption]
-        CH[🦎 Chameleon Hash Engine]
-        CS[Contract Service · web3.py]
-        NFT[Asset / NFT Service]
-    end
-    subgraph Chain["⛓️ Smart Contracts · Ganache / Sepolia"]
-        IR[IdentityRegistry]
-        PAC[PlatformAccessControl]
-        AN[AssetNFT · ERC-721]
-    end
-    subgraph Data["🗄️ Data"]
-        MONGO[(MongoDB · Encrypted, Off-Chain)]
-        KEYS[Key Store]
-    end
-    FE --> JWT
-    WALLET --> DID --> JWT
-    RFID --> PRES --> RBAC
-    JWT --> RBAC --> AUTH & HC & NFT
-    HC --> MONGO
-    CH --> MONGO
-    CS --> IR & PAC & AN
-    NFT --> CS
-    HC -.SHA-256 anchor.-> IR
-    MONGO --- KEYS
+graph LR
+    Browser["Browser<br/>React + Vite (Vercel)"] -->|HTTPS /api/v1| API["Flask API<br/>(Render)"]
+    API --> DB[("MongoDB Atlas")]
+    API -->|web3.py via Alchemy| Chain["Ethereum Sepolia<br/>smart contracts"]
+    ESP["ESP32 + RC522<br/>RFID terminal"] -->|"POST /api/v1/auth/rfid-verify"| API
+    Browser -->|"https://localhost:8443"| SG["SecuGen WebAPI<br/>local service (SgiBioSrv)"]
+    SG --- Reader["SecuGen U20<br/>fingerprint reader"]
 ```
 
-> **Dual authorization + dual audit:** critical actions are checked by the backend
-> **and** the smart contract, and recorded in both the hash-chained log and on-chain
-> events. If the chain is unreachable, reads degrade gracefully (HTTP 200,
-> `chain_available:false`) and critical writes **fail closed** (HTTP 503) — the
-> healthcare platform never depends on chain availability.
+If the chain is unreachable, reads degrade gracefully and critical on-chain writes fail closed (HTTP 503). The healthcare platform does not depend on chain availability.
 
----
+## Tech stack
 
-## 🔐 How passwordless DID login works
+| Layer | Technology |
+|---|---|
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS, TanStack Query, Recharts, Framer Motion |
+| Backend | Python 3.13, Flask 3, PyJWT, bcrypt, pyotp, marshmallow, gunicorn, Swagger (flasgger) |
+| Database | MongoDB (Atlas in production) |
+| Blockchain | web3.py, eth-account, Ethereum Sepolia (Ganache for local dev) |
+| Contracts | Solidity 0.8.24, OpenZeppelin v5, Hardhat |
+| Crypto | Chameleon hash, Fernet encryption, SHA-256 anchoring, keccak256 (SIH), secp256k1 / EIP-191 |
+| Hardware | ESP32, RC522 RFID, SecuGen U20 |
+| Testing / CI | pytest + mongomock, Vitest, Hardhat tests, GitHub Actions |
 
-```
-1. (optional 2FA) Tap RFID card ── records a physical-presence token
-                                    (validity configurable, default 25s)
-2. Client asks backend for a one-time challenge         POST /api/v1/did/challenge
-3. Browser signs the challenge with the DID private key (EIP-191, key stays local)
-4. Backend recovers the signer, checks it matches the DID's registered public key,
-   (optionally) confirms the RFID tap, then issues the SAME JWT as password login
-                                                        POST /api/v1/did/verify
-```
+## Smart contracts (Sepolia)
 
-Even if a device is fully compromised and the key is stolen, enabling RFID 2FA
-(`SIH_DID_LOGIN_REQUIRE_RFID`) means the attacker still cannot log in without the
-physical card — and any DID can be **instantly revoked**.
+| Contract | Address |
+|---|---|
+| PlatformAccessControl | [`0xb959ae2C2e357a92fd8736eFDf69305Acf025C84`](https://sepolia.etherscan.io/address/0xb959ae2C2e357a92fd8736eFDf69305Acf025C84) |
+| IdentityRegistry | [`0x80d91274844d78fC2CE9aE84Dd3871B3D415a9A1`](https://sepolia.etherscan.io/address/0x80d91274844d78fC2CE9aE84Dd3871B3D415a9A1) |
+| AssetNFT | [`0x7a44a8D353cDf05fd2c93c7c822BAF11F1348651`](https://sepolia.etherscan.io/address/0x7a44a8D353cDf05fd2c93c7c822BAF11F1348651) |
 
----
+Sources are in [`contracts/src`](contracts/src). Deployment steps: [`docs/sih-contracts-deploy.md`](docs/sih-contracts-deploy.md).
 
-## 🖐 Fingerprint (SecuGen) second factor for admins
+## Demo accounts
 
-Admins can unlock login with a SecuGen fingerprint reader (in addition to, not instead of, the authenticator-app code).
+These are non-admin demo accounts for the public deployment.
 
-**Setup**
-1. Request the free **SecuGen WebAPI** (60-day trial) from SecuGen's download request form and install it. It installs the `SgiBioSrv` Windows service that talks to the reader.
-2. Open `https://localhost:8443` once in the browser and accept the certificate.
-3. If SecuGen emails a license string, set `VITE_SECUGEN_LICSTR` in `frontend/.env`.
-4. Sign in as an admin, open **Profile → Fingerprint (SecuGen)** and enroll (two scans must match).
-
-The SecuGen service runs on the admin's own PC, so this only works on the machine with the reader attached. A deployed HTTPS site can still call `https://localhost:8443` on that PC (both are HTTPS, so no mixed-content block; CORS is handled by the SecuGen service).
-
-**Backend flags:** `BIOMETRIC_ENABLED` (default `true`), `BIOMETRIC_LOGIN_ENABLED` (default `true`, fingerprint unlock at login), `BIOMETRIC_MIN_SCORE` (default `80`; SecuGen recommends about 100 of 199 for a strong match).
-
-**Login flow:** password → (admin with an enrolled fingerprint) server withholds tokens and returns a short-lived, single-use `pending_token` (120s, 3 attempts) → fingerprint scan **or** authenticator code → JWT. Admins without an enrolled fingerprint keep the existing TOTP / no-MFA behaviour.
-
-**Endpoints:** `/api/v1/biometric/*` (status, enroll, template, verify, remove; admin session) and `/api/v1/auth/login/fingerprint/template|verify` (authorised by the pending token). Enroll/verify/remove and login attempts are audited with `resource_type="biometric"`.
-
-**Prototype limitations (honest):**
-- Matching is done **client-side** by the SecuGen local service; the server **trusts the reported score**. Someone with the admin's password who can call the API could submit a high score. The enrolled template is also released to a client holding a valid pending token.
-- Recovery risk: an admin whose only second factor is a fingerprint, on a PC without the reader, cannot log in. Keep TOTP enabled, or set `BIOMETRIC_LOGIN_ENABLED=false`.
-- The Mantra MFS100 adapter is a stub and not implemented.
-
----
-
-## 🧠 Cryptography at a glance
-
-| Purpose | Primitive | Notes |
+| Role | Email | Password |
 |---|---|---|
-| Identity keys | **secp256k1 (ECDSA)** | keypair generated client-side; private key never sent |
-| DID login | **EIP-191 `personal_sign`** | verified with `eth-account.recover_message` |
-| On-chain SIH hashes (DID / pubkey / metadata) | **keccak256** → bytes32 | native to Solidity |
-| Healthcare record anchoring | **SHA-256** | separate, unchanged subsystem |
-| Data at rest | **AES-256 (Fernet)** | MongoDB stores ciphertext only |
-| Redactable blockchain | **1536-bit chameleon hash** | real primitive; redaction *workflow* is a simulation layer |
+| Doctor | `dr.rahul@citycare.in` | `Doctor@123` |
+| Registration staff | `reception@citycare.in` | `Staff@123` |
+| Patient | `rajesh.kumar@gmail.com` | `Patient@123` |
+| Patient | `priya.sharma@gmail.com` | `Patient@456` |
+| Patient | `amit.patel@gmail.com` | `Patient@789` |
+| Admin / DPO | Credentials are available on request (admin is protected by MFA) | |
 
-> keccak256 (SIH) and SHA-256 (healthcare anchoring) are intentionally **separate**
-> subsystems — not interchangeable.
+## Getting started locally
 
----
+**Prerequisites:** Python 3.13, Node.js 20+, MongoDB running locally (default `mongodb://localhost:27017`).
 
-## 📈 Chameleon Hash Benchmarks
+### Backend (port 5000)
 
-Real measured performance of the 1536-bit scheme (see [`backend/benchmarks`](backend/benchmarks)):
-
-<div align="center">
-  <img src="docs/assets/chameleon_benchmark.png" alt="Chameleon hash benchmark" width="640" />
-</div>
-
-| Operation | Mean time | Note |
-|-----------|-----------|------|
-| Key generation | ~9 ms | one-time setup |
-| Hash `CH(m,r)` | ~13 ms | size-independent (SHA-256 pre-compression) |
-| Verify | ~13 ms | — |
-| **Collision (authorized redaction)** | **~0.25 ms** | **~50× faster than hashing, constant regardless of record size** |
-
-> Reproduce: `python -m benchmarks.benchmark_chameleon --iterations 100`
-
----
-
-## 🛠️ Tech Stack
-
-<div align="center">
-
-**Frontend** · React 18 · TypeScript · Vite · Tailwind CSS · TanStack Query · Recharts · Framer Motion
-**Backend** · Flask 3 · Python 3.13 · PyJWT · bcrypt · google-auth · eth-account / eth-keys
-**Smart Contracts** · Solidity 0.8.24 · OpenZeppelin v5 · Hardhat
-**Chain** · Web3.py · Ganache (dev) · Ethereum Sepolia (testnet-ready)
-**Data** · MongoDB 7 · AES-256 (Fernet)
-**Hardware** · ESP32 · RC522 RFID · green/red status LEDs
-**Quality** · pytest + mongomock (214 tests) · Hardhat (20 tests) · GitHub Actions CI
-
-</div>
-
----
-
-## ⚡ Quick Start
-
-<details open>
-<summary><strong>Backend + Frontend (core platform)</strong></summary>
-
-```bash
-# Clone
-git clone https://github.com/Bennyhinn007/DPDP-Compliant-Blockchain-Based-Personal-Data-Protection-and-Consent-Management-System.git
-cd dpdp_kiro
-
-# ── Backend (API on :5000) ──
+```powershell
 cd backend
-python -m venv venv
-venv\Scripts\activate           # Windows  (source venv/bin/activate on macOS/Linux)
 pip install -r requirements.txt
-cp .env.example .env            # then fill in your values
-python -m app.db_init           # initialize MongoDB collections
-python seeds/seed_demo.py       # seed demo data
-python run.py                   # start API
+copy .env.example .env        # macOS/Linux: cp .env.example .env
+python seeds/seed_demo.py     # seed demo data
+python run.py
+```
 
-# ── Frontend (UI on :5173) ──  (new terminal)
+Swagger UI is served at `http://localhost:5000/api/docs/` when `flasgger` is installed.
+
+### Frontend (port 5173)
+
+```powershell
 cd frontend
 npm install
-cp .env.example .env            # optional: add VITE_GOOGLE_CLIENT_ID
 npm run dev
 ```
-</details>
 
-<details>
-<summary><strong>Smart contracts (enable on-chain SIH features)</strong></summary>
+Open http://localhost:5173. Vite proxies `/api` to `http://localhost:5000`.
 
-```bash
-# Start a local chain (deterministic = stable addresses across restarts)
-npx ganache --deterministic --chain.chainId 1337
+### Smart contracts (optional)
 
-# Deploy the three contracts + export ABIs to the backend
+```powershell
 cd contracts
 npm install
-npx hardhat run scripts/deploy.js --network ganache
-
-# Copy the printed addresses into backend/.env, then restart the backend:
-#   SIH_ACCESS_CONTROL_ADDRESS=0x...
-#   SIH_IDENTITY_REGISTRY_ADDRESS=0x...
-#   SIH_ASSET_NFT_ADDRESS=0x...
+npm run compile
+npm test
+npm run deploy:ganache    # local chain (needs a Ganache node on :8545)
+npm run deploy:sepolia    # needs SEPOLIA_RPC_URL and SEPOLIA_PRIVATE_KEY in contracts/.env
 ```
 
-See [`docs/sih-contracts-deploy.md`](docs/sih-contracts-deploy.md) for Sepolia.
-Until addresses are set, on-chain **writes fail closed** (HTTP 503) by design —
-DID *creation* and *login* still work off-chain.
-</details>
+Copy the printed addresses into `backend/.env` (`SIH_ACCESS_CONTROL_ADDRESS`, `SIH_IDENTITY_REGISTRY_ADDRESS`, `SIH_ASSET_NFT_ADDRESS`). Docker is also available via `docker-compose.yml`.
 
-<details>
-<summary><strong>Run the tests (no external services needed)</strong></summary>
+### Tests
 
-```bash
-# Backend — self-contained via in-memory mongomock
-cd backend
-pytest -q                        # 214 passed, 1 skipped
-
-# Smart contracts
-cd contracts
-npx hardhat test                 # 20 passing
+```powershell
+cd backend;  python -m pytest -q
+cd frontend; npx vitest --run
+cd frontend; npx tsc --noEmit
 ```
-</details>
 
-<details>
-<summary><strong>Docker</strong></summary>
+CI runs `pytest -q` for the backend and `npm run build` (tsc + vite) for the frontend.
 
-```bash
-docker-compose up --build
-```
-</details>
+## Environment variables
 
----
+Names, purpose and defaults only. Never commit real values. Full list in `backend/.env.example` and `frontend/.env.example`.
 
-## 🔑 Demo Credentials
+### Backend
 
-| Email | Password | Role |
-|-------|----------|------|
-| `admin@dpdp-health.in` | `Admin@Secure123` | Admin / DPO |
-| `dr.rahul@citycare.in` | `Doctor@123` | Doctor (Healthcare Provider) |
-| `reception@citycare.in` | `Staff@123` | Registration Staff (front desk) |
-| `rajesh.kumar@gmail.com` | `Patient@123` | Patient |
-| `priya.sharma@gmail.com` | `Patient@456` | Patient |
-
-> **API docs:** Swagger UI at `http://localhost:5000/api/docs/` · Health at `/health`
-> **Try DID login:** log in normally → **Identity Center** → *Create My DID* → log out → **Sign in with DID (passwordless)**.
-
----
-
-## 🧪 Key API Endpoints
-
-<details>
-<summary><strong>Identity, Access & Digital Assets (SIH 26125)</strong></summary>
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/api/v1/did` | User | Create a DID for the current user |
-| POST | `/api/v1/did/challenge` | — | Get a one-time login challenge |
-| POST | `/api/v1/did/verify` | — | Verify signature → issue JWT (optional RFID 2FA) |
-| POST | `/api/v1/did/:did/revoke` | Admin/DPO | Revoke a DID |
-| GET | `/api/v1/roles/matrix` | User | On-chain role matrix + chain status |
-| POST | `/api/v1/assets` | Admin/Mgr | Register a digital asset (encrypted off-chain) |
-| POST | `/api/v1/nft/mint` | Admin | Mint an NFT to a DID (fail-closed if chain down) |
-| GET | `/api/v1/nft/:id/verify` | User | Verify ownership + metadata hash |
-| GET | `/api/v1/blockchain/events` | Admin | Cached on-chain contract events |
-
-</details>
-
-<details>
-<summary><strong>Healthcare, Consent & Integrity (DPDP)</strong></summary>
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/api/v1/auth/login` | — | Login → JWT |
-| POST | `/api/v1/auth/login/fingerprint/template` | Pending token | Admin fingerprint login: get enrolled template |
-| POST | `/api/v1/auth/login/fingerprint/verify` | Pending token | Admin fingerprint login: submit match score → JWT |
-| POST | `/api/v1/auth/google` | — | Google OAuth login |
-| POST | `/api/v1/auth/rfid-verify` | — | Verify an RFID card tap |
-| GET | `/api/v1/patients/me/records` | Patient | Own health records |
-| POST | `/api/v1/patients/me/records/:id/correct` | Patient | Correct record (DPDP §12) |
-| POST | `/api/v1/patients/me/records/:id/erase` | Patient | Erase record (RFID-gated) |
-| GET | `/api/v1/patients/me/records/:id/lifecycle` | Patient | Record Lifecycle Story |
-| POST | `/api/v1/integrity/tamper-demo` | Patient | Live tamper-attempt demo |
-| POST | `/api/v1/consents/grant` | Patient | Grant consent |
-| GET | `/api/v1/compliance/compliance-score` | Admin | DPDP compliance score |
-
-</details>
-
----
-
-## ⚖️ DPDP Act Compliance Mapping
-
-| DPDP Section | Right / Obligation | Implementation |
+| Variable | Purpose | Default |
 |---|---|---|
-| §5–6 | Consent | 6 consent types, receipts, blockchain-anchored |
-| §11 | Right to Access | Personal Data Center + data export |
-| §12 | Right to Correction | Chameleon-hash correction workflow |
-| §12 | Right to Erasure | Chameleon-hash redaction (RFID-gated) |
-| §8(4) | Security Safeguards | AES-256, RBAC, DID keys, physical-presence auth |
-| §8(6) | Breach Notification | Severity-tagged audit trail |
+| `FLASK_ENV` | `development`, `testing` or `production` | `development` |
+| `PORT` | API port | `5000` |
+| `SECRET_KEY`, `JWT_SECRET_KEY` | Flask and JWT signing secrets (required in production) | dev placeholders |
+| `ENCRYPTION_KEY` | Fernet key for field encryption (required in production) | dev key in development |
+| `MONGO_URI`, `MONGO_DB_NAME` | MongoDB connection | `mongodb://localhost:27017`, `dpdp_healthcare_db` |
+| `CORS_ORIGINS` | Allowed frontend origins, comma-separated | `http://localhost:5173` |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google sign-in | empty |
+| `BLOCKCHAIN_NETWORK` | `ganache` or `sepolia` | `ganache` |
+| `GANACHE_URL`, `GANACHE_CHAIN_ID` | Local chain | `http://localhost:8545`, `1337` |
+| `SEPOLIA_RPC_URL`, `SEPOLIA_PRIVATE_KEY`, `SEPOLIA_CHAIN_ID` | Sepolia access and sender account | empty, empty, `11155111` |
+| `BLOCKCHAIN_EXPLORER_URL` | Explorer base for tx links | `https://sepolia.etherscan.io/tx/` |
+| `SIH_FEATURES_ENABLED` | Master switch for DID / contracts / NFT layer | `true` |
+| `SIH_DID_METHOD` | DID method name | `rakshaid` |
+| `SIH_DID_CHALLENGE_TTL_SECONDS` | DID login challenge lifetime | `120` |
+| `SIH_RFID_GATE_ENABLED` | Require RFID tap for NFT mint / DID revoke | `false` |
+| `SIH_DID_LOGIN_REQUIRE_RFID` | Require RFID tap as second factor for DID login | `false` |
+| `SIH_IDENTITY_REGISTRY_ADDRESS`, `SIH_ACCESS_CONTROL_ADDRESS`, `SIH_ASSET_NFT_ADDRESS` | Deployed contract addresses | empty |
+| `ADMIN_MFA_REQUIRED` | Mandatory TOTP for admin login | `true` |
+| `BIOMETRIC_ENABLED` | Fingerprint enroll/verify | `true` |
+| `BIOMETRIC_LOGIN_ENABLED` | Fingerprint unlock at admin login | `true` |
+| `BIOMETRIC_MIN_SCORE` | Minimum accepted match score | `80` |
+| `PRESENCE_VALIDITY_SECONDS` | How long an RFID/fingerprint presence stays valid | `25` |
+| `PROVIDER_ORG_NAME` | Provider name shown in the UI | `CityCare Hospital` |
+| `KEY_STORE_PATH` | Local key store path | `./keystore` |
 
-See the full [**Threat Model & Security Analysis**](docs/threat-model.md).
+### Frontend
 
----
+| Variable | Purpose | Default |
+|---|---|---|
+| `VITE_API_URL` | Backend API base URL | `/api/v1` |
+| `VITE_GOOGLE_CLIENT_ID` | Google OAuth client ID (public) | empty |
+| `VITE_SECUGEN_LICSTR` | SecuGen WebAPI license string (optional) | empty |
 
-## 🔬 Research Contribution
+## Hardware
 
-A unified architecture combining:
+### ESP32 RFID terminal
 
-1. **Decentralized identity** with client-side keys and EIP-191 passwordless login
-2. **Smart-contract-enforced RBAC** as a single on-chain role authority (dual-enforced)
-3. **NFT digital-asset ownership** bound to DIDs, with a no-PHI guard
-4. **Privacy-preserving design** — encrypted off-chain data, hashes-only on-chain
-5. **Real chameleon-hash functions** for authorized, verifiable blockchain redaction
-6. **Hardware step-up auth** — RFID physical presence as an optional second factor
-7. **Dual audit** — hash-chained log **+** immutable on-chain events
+Firmware: [`hardware/esp32_rfid_terminal/esp32_rfid_terminal.ino`](hardware/esp32_rfid_terminal/esp32_rfid_terminal.ino). It reads a card with an RC522, posts the UID to `/api/v1/auth/rfid-verify`, and shows the result on LEDs: green on `GPIO25` (granted), red on `GPIO26` (denied or error). Use a 220-330 ohm resistor per LED.
 
-The system makes abstract cryptography *tangible*: evaluators watch a passwordless
-key-based login, an on-chain-verified asset transfer, and a lawful record correction
-that keeps its blockchain anchor valid — while a tamper attempt gets caught.
+| RC522 | ESP32 |
+|---|---|
+| SDA | GPIO 5 |
+| SCK | GPIO 18 |
+| MOSI | GPIO 23 |
+| MISO | GPIO 19 |
+| RST | GPIO 22 |
+| 3.3V / GND | 3.3V / GND (never 5V) |
 
----
+The terminal resolves the backend by mDNS hostname (`<host>.local`), so the PC's IP can change. Set your own Wi-Fi and host values in the sketch before flashing, and do not commit them. Enroll cards with `backend/seeds/enroll_cards.py`.
 
-## 📁 Project Structure
+### SecuGen fingerprint (admin second factor)
 
-The repo has two cohesive layers. The **DPDP healthcare platform** is the primary
-system; the **SIH 26125 identity/asset extension** (DID + smart contracts + NFTs)
-is layered on top — *add, don't replace*. Both share one backend, database, and UI.
+1. Request the free SecuGen WebAPI (60-day trial) from SecuGen and install the client (`SGI_BWAPI_Win_64bit.exe`). It installs the `SgiBioSrv` service on `https://localhost:8443`.
+2. A plain browser visit to `https://localhost:8443` just keeps loading. That is normal.
+3. Chrome may ask to allow local network access. Allow it.
+4. If SecuGen emails a license string, set `VITE_SECUGEN_LICSTR` in `frontend/.env`.
+5. Sign in as admin, open Profile, then Fingerprint (SecuGen), and enroll.
+
+This only works on the PC that has the reader. Do not run SecuGen's Python sample app at the same time: it also uses port 5000, which clashes with the Flask backend.
+
+Mantra MFS100: the adapter is not implemented yet.
+
+## Deployment
+
+| Component | Platform | Notes |
+|---|---|---|
+| Frontend | Vercel | Static Vite build; custom domain `dpdphealthcare.bennyhinn.dev` (`frontend/vercel.json`) |
+| Backend | Render | Blueprint in `render.yaml`, gunicorn, health check `/health` |
+| Database | MongoDB Atlas | Connection string set as `MONGO_URI` on Render |
+| Blockchain | Ethereum Sepolia | RPC via Alchemy; secrets only in platform env vars |
+| Keep-warm | GitHub Actions | `.github/workflows/keep-warm.yml` pings `/health` every 10 minutes |
+
+Details: [`docs/deployment.md`](docs/deployment.md).
+
+## Security notes and limitations
+
+- Secrets (DB URI, keys, RPC URL, wallet key) live in environment variables, never in the repo.
+- Production refuses to start with missing or default secrets.
+- Fingerprint matching is client-side; the server trusts the reported score. Treat it as prototype-grade.
+- An admin whose only second factor is a fingerprint cannot log in from a PC without the reader. Keep TOTP enabled or set `BIOMETRIC_LOGIN_ENABLED=false`.
+- Blockchain activity is on the Sepolia testnet only. No real-value assets.
+- The `did:rakshaid:` method is a prototype, and browser key custody uses local storage.
+- The chameleon-hash primitive is real; the redaction workflow is a demonstration layer.
+- The accounts above are public demo credentials. Do not store real patient data.
+
+See the [threat model](docs/threat-model.md).
+
+## Documentation
+
+- [Demo script](docs/demo-script.md)
+- [Setup guide](docs/setup-guide.md)
+- [Deployment guide](docs/deployment.md)
+- [SIH contracts deployment](docs/sih-contracts-deploy.md)
+- [Threat model](docs/threat-model.md)
+- [Chameleon-hash benchmarks](backend/benchmarks)
+
+## Project structure
 
 ```
-dpdp_kiro/
-├── backend/                          # Flask 3 · Python 3.13 API
-│   ├── app/
-│   │   ├── __init__.py               # App factory + blueprint registration
-│   │   ├── config.py                 # Env config (incl. SIH_* feature flags)
-│   │   ├── db_init.py                # Collection + index bootstrap
-│   │   ├── extensions.py             # MongoDB + Web3 init
-│   │   ├── blueprints/               # HTTP routes (one package per domain)
-│   │   │   ├── auth/                 #   login, Google OAuth, MFA, RFID verify
-│   │   │   ├── patients/  doctors/  pharmacy/
-│   │   │   ├── consents/             #   DPDP consent lifecycle + receipts
-│   │   │   ├── integrity/            #   record verification + tamper demo
-│   │   │   ├── blockchain/           #   hash anchoring + contract events
-│   │   │   ├── audit/  compliance/
-│   │   │   ├── did/                  # ── SIH: DID create / login / revoke
-│   │   │   ├── roles/                # ── SIH: on-chain RBAC (Admin/Manager/…)
-│   │   │   ├── assets/               # ── SIH: digital-asset registration
-│   │   │   └── nft/                  # ── SIH: ERC-721 mint / assign / transfer
-│   │   ├── services/                 # Business logic
-│   │   │   ├── chameleon_crypto.py   #   real 1536-bit chameleon-hash primitive
-│   │   │   ├── chameleon_hash_service.py  # redaction workflow (simulation layer)
-│   │   │   ├── encryption_service.py #   AES-256 (Fernet) field encryption
-│   │   │   ├── blockchain_service.py #   SHA-256 anchoring (Ganache/Sepolia)
-│   │   │   ├── consent_service.py  patient_service.py  audit_service.py  …
-│   │   │   ├── did_service.py        # ── SIH: keypair/DID + EIP-191 verify
-│   │   │   ├── contract_service.py   # ── SIH: web3 wrapper (graceful degrade)
-│   │   │   └── asset_nft_service.py  # ── SIH: encrypted metadata + keccak256
-│   │   ├── middleware/               # JWT, RBAC, audit, physical-presence
-│   │   └── utils/                    # constants, errors, helpers
-│   ├── benchmarks/                   # Chameleon-hash benchmark harness + results
-│   ├── seeds/                        # Demo data + RFID card enrollment
-│   └── tests/                        # Self-contained tests (mongomock) — 214 passing
-│
-├── contracts/                        # ── SIH: Solidity (Hardhat + OpenZeppelin v5)
-│   ├── src/
-│   │   ├── IdentityRegistry.sol      #   on-chain DID registry (identity only)
-│   │   ├── PlatformAccessControl.sol #   single role authority (RBAC)
-│   │   └── AssetNFT.sol              #   ERC-721 digital-asset ownership
-│   ├── test/                         #   Hardhat tests (20 passing)
-│   ├── scripts/deploy.js             #   deploy + export ABIs to backend
-│   └── hardhat.config.js             #   Ganache + Sepolia networks
-│
-├── frontend/                         # React 18 · TypeScript · Vite · Tailwind
-│   └── src/
-│       ├── pages/                    # Feature pages by role
-│       │   ├── auth/                 #   login (password · Google · DID + RFID 2FA)
-│       │   ├── patient/  doctor/  dpo/  admin/  shared/
-│       │   ├── identity/             # ── SIH: Identity Center (create DID)
-│       │   ├── access/               # ── SIH: Access Control Center (roles)
-│       │   └── assets/               # ── SIH: Digital Asset Center (NFTs)
-│       ├── components/               # UI + shared (LifecycleStory, TamperDemo, …)
-│       ├── contexts/                 # AuthContext (password · Google · DID login)
-│       ├── services/                 # API client layer (…, identityService,
-│       │                             #   assetService for SIH)
-│       └── lib/                      # wallet.ts (keypair + EIP-191 signing)
-│
-├── hardware/                         # ESP32 + RC522 RFID firmware (+ green/red status LEDs)
-├── docs/                             # threat-model, demo-script, deployment,
-│                                     #   setup-guide, sih-contracts-deploy, pitch/
-└── .github/workflows/                # CI pipeline
+.
+├── backend/              Flask API (app/, seeds/, tests/, benchmarks/, run.py)
+├── frontend/             React + TypeScript + Vite UI (src/)
+├── contracts/            Solidity contracts, Hardhat config, tests, deploy script
+├── hardware/             ESP32 RFID terminal firmware
+├── docs/                 Guides, demo script, threat model, pitch material
+├── .github/workflows/    ci.yml, keep-warm.yml
+├── docker-compose.yml
+└── render.yaml           Render blueprint
 ```
 
-> Legend: lines marked **`── SIH`** are the additive identity/access/asset
-> extension for SIH PS 26125. Everything else is the original DPDP healthcare
-> platform and runs standalone when SIH features are disabled.
+## License and acknowledgements
 
----
+License: Not specified.
 
-## 📚 Standards & References
-
-- **W3C DID Core** — decentralized identifier model — https://www.w3.org/TR/did-core/
-- **EIP-721** — ERC-721 NFT standard (`AssetNFT`) — https://eips.ethereum.org/EIPS/eip-721
-- **EIP-191** — signed-data format for DID login — https://eips.ethereum.org/EIPS/eip-191
-- **OpenZeppelin Contracts v5** — audited RBAC / ERC-721 / ReentrancyGuard — https://docs.openzeppelin.com/contracts/5.x/
-- **DPDP Act, 2023 (India)** — privacy & consent foundation — https://www.meity.gov.in/data-protection-framework
-- **Chameleon Signatures** — Krawczyk & Rabin (2000) · **Redactable Blockchain** — Ateniese et al. (2017)
-- **SIH PS 26125** — Bharat Electronics Limited · Theme: Blockchain & Cybersecurity — https://www.sih.gov.in/
-
----
-
-## 📝 Honest labeling
-
-- The `did:rakshaid:` DID method is a **project-specific prototype**, not an interoperable production DID network (e.g. ION/Sovrin).
-- The chameleon-hash **primitive is real and benchmarked**; the redaction **workflow** is a simulation layer for demonstration.
-- Sepolia is **supported and deployable** (config + deploy script + docs); it is not auto-deployed by this repo.
-- Fingerprint login is **prototype-grade**: matching runs in the browser via the SecuGen local service and the server trusts the reported score.
-- Browser key custody is **prototype-grade** (localStorage); hardware-wallet / HSM custody is noted future work.
-
----
-
-<div align="center">
-
-**One platform: verifiable identity, un-bypassable access, and provable ownership —
-with privacy kept off-chain and trust kept on-chain.**
-
-<sub>Academic Project · All Rights Reserved · India 🇮🇳 · DPDP Act 2023</sub>
-
-</div>
+Built for Smart India Hackathon problem statement 26125 (Bharat Electronics Limited). Uses OpenZeppelin Contracts, Hardhat, Flask and React.
