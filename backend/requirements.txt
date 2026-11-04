@@ -15,7 +15,7 @@ google-auth==2.38.0
 eth-account==0.13.4
 
 # Blockchain
-web3==7.6.0
+web3==8.0.0
 
 # Encryption
 pycryptodome==3.21.0
