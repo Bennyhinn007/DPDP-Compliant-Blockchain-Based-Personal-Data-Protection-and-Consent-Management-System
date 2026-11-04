@@ -25,6 +25,7 @@ import { patientService } from "@/services/patientService";
 import { auditService } from "@/services/auditService";
 import { StatCard } from "@/components/shared/StatCard";
 import { PageHero } from "@/components/shared/PageHero";
+import { DpdpActExplainer } from "@/components/patient/DpdpActExplainer";
 import { DashboardSkeleton } from "@/components/shared/Skeleton";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -120,6 +121,9 @@ export function PatientDashboard() {
           variant="warning"
         />
       </div>
+
+      {/* DPDP Act plain-language explainer */}
+      <DpdpActExplainer />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Recent activity */}
