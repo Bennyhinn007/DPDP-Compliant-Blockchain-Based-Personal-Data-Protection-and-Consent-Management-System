@@ -3,7 +3,7 @@ Biometric Blueprint — fingerprint second factor for admins (PROTOTYPE).
 
 Endpoints under /api/v1/biometric. All require an authenticated ADMIN session.
 Fingerprint capture + matching happen in the browser via the vendor's local
-service (SecuGen / Mantra); this API stores the encrypted enrolled template and
+service (SecuGen); this API stores the encrypted enrolled template and
 turns a successful match into a short-lived physical-presence token.
 
 NOTE: failures here return 403 (not 401) on purpose — the frontend's global 401
@@ -117,7 +117,7 @@ def biometric_template():
 @roles_required("admin")
 def biometric_verify():
     """
-    Body: { "score": <number>, "provider": "secugen|mantra" }
+    Body: { "score": <number>, "provider": "secugen" }
     The browser matched a live scan against the enrolled template and reports the
     score. At/above the threshold a physical-presence token is recorded.
     """

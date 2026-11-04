@@ -80,9 +80,9 @@ def test_invalid_inputs(client):
 def test_reenroll_requires_presence(client, app):
     auth, uid = _login(client, "bio_reenroll@example.com")
     assert _enroll(client, auth).status_code == 201
-    assert _enroll(client, auth, "mantra").status_code == 403
+    assert _enroll(client, auth).status_code == 403
     _presence(app, uid)
-    assert _enroll(client, auth, "mantra").status_code == 201
+    assert _enroll(client, auth).status_code == 201
 
 
 def test_verify_below_and_above_threshold(client, app):

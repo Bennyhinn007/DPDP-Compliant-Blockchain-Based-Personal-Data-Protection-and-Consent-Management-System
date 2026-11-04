@@ -237,8 +237,6 @@ The terminal resolves the backend by mDNS hostname (`<host>.local`), so the PC's
 
 This only works on the PC that has the reader. Do not run SecuGen's Python sample app at the same time: it also uses port 5000, which clashes with the Flask backend.
 
-Mantra MFS100: the adapter is not implemented yet.
-
 ## Deployment
 
 | Component | Platform | Notes |

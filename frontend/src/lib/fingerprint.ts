@@ -55,7 +55,7 @@ export interface CaptureResult {
 }
 
 export interface FingerprintProvider {
-  id: "secugen" | "mantra";
+  id: "secugen";
   capture(): Promise<CaptureResult>;
   match(template1: string, template2: string): Promise<number>;
 }
@@ -118,20 +118,8 @@ export const secugenProvider: FingerprintProvider = {
   },
 };
 
-/**
- * TODO: Mantra MFS100 adapter is NOT implemented. This stub throws on purpose and
- * returns no fake data.
- */
-export const mantraProvider: FingerprintProvider = {
-  id: "mantra",
-  async capture(): Promise<CaptureResult> {
-    throw new FingerprintError("Mantra adapter not implemented");
-  },
-  async match(): Promise<number> {
-    throw new FingerprintError("Mantra adapter not implemented");
-  },
-};
-
-export function getProvider(id: string): FingerprintProvider {
-  return id === "mantra" ? mantraProvider : secugenProvider;
+// Only SecuGen is supported. The id parameter is kept for API compatibility.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function getProvider(_id?: string): FingerprintProvider {
+  return secugenProvider;
 }

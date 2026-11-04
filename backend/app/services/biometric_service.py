@@ -3,7 +3,7 @@ Biometric (fingerprint) Service — PROTOTYPE second factor for admins.
 
 How it fits together:
   * The fingerprint is captured and MATCHED in the browser by the vendor's local
-    service (SecuGen SgiBioSrv, or Mantra MFS100). The backend never sees raw
+    service (SecuGen SgiBioSrv). The backend never sees raw
     fingerprint images.
   * The backend stores the admin's enrolled TEMPLATE encrypted at rest (Fernet,
     via the existing EncryptionService) in its own collection.
@@ -31,7 +31,7 @@ from app.utils.errors import ValidationError
 from app.services.encryption_service import get_encryption_service
 from app.services.physical_presence_service import PhysicalPresenceService
 
-ALLOWED_PROVIDERS = ("secugen", "mantra")
+ALLOWED_PROVIDERS = ("secugen",)
 MIN_TEMPLATE_BYTES = 16
 MAX_TEMPLATE_BYTES = 64 * 1024
 

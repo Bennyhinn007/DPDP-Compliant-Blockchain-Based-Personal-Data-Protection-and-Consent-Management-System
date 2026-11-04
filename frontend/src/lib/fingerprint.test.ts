@@ -3,7 +3,6 @@ import {
   FingerprintError,
   NETWORK_ERROR_MESSAGE,
   getProvider,
-  mantraProvider,
   secugenProvider,
 } from "./fingerprint";
 
@@ -95,11 +94,9 @@ describe("secugenProvider.match", () => {
   });
 });
 
-describe("mantra stub", () => {
-  it("throws not implemented", async () => {
-    await expect(mantraProvider.capture()).rejects.toThrow("Mantra adapter not implemented");
-    await expect(mantraProvider.match("a", "b")).rejects.toThrow("Mantra adapter not implemented");
-    expect(getProvider("mantra")).toBe(mantraProvider);
+describe("getProvider", () => {
+  it("always returns the SecuGen provider", () => {
     expect(getProvider("secugen")).toBe(secugenProvider);
+    expect(getProvider()).toBe(secugenProvider);
   });
 });
