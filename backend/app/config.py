@@ -61,6 +61,14 @@ class BaseConfig:
     # (enroll-on-first-login). Non-admin roles are unaffected.
     ADMIN_MFA_REQUIRED = os.environ.get("ADMIN_MFA_REQUIRED", "true").lower() == "true"
 
+    # Fingerprint (SecuGen / Mantra) second factor for admins. The scanner is read
+    # in the browser through the vendor's local service; the backend stores the
+    # enrolled template ENCRYPTED and records a short-lived physical-presence
+    # token (same token RFID taps create) after a successful match.
+    BIOMETRIC_ENABLED = os.environ.get("BIOMETRIC_ENABLED", "true").lower() == "true"
+    # Minimum match score accepted. Scales differ per vendor/SDK — tune per sensor.
+    BIOMETRIC_MIN_SCORE = int(os.environ.get("BIOMETRIC_MIN_SCORE", "80"))
+
     # ── SIH 26125 Identity & Asset Extension (ADDITIVE) ──────────────────
     # Master feature flag for the DID / smart-contract / NFT layer. When False,
     # the SIH endpoints and UI are inert and the platform is the pure DPDP
