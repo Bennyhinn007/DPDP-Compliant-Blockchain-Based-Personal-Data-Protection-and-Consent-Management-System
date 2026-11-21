@@ -7,7 +7,8 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryProvider } from "@/contexts/QueryProvider";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { portalPath } from "@/lib/navigation";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
 import { AppShell } from "@/layouts/AppShell";
 import { Toaster } from "sonner";
@@ -17,6 +18,7 @@ import { PageLoader } from "@/components/shared/PageLoader";
 // initial bundle stays small and a patient never downloads admin/DPO/doctor code.
 // (Named exports -> map to a default for React.lazy.)
 const LoginPage = lazy(() => import("@/pages/auth/LoginPage").then((m) => ({ default: m.LoginPage })));
+const PatientWalkthrough = lazy(() => import("@/pages/PatientWalkthrough").then((m) => ({ default: m.PatientWalkthrough })));
 const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage").then((m) => ({ default: m.RegisterPage })));
 const PatientDashboard = lazy(() => import("@/pages/patient/PatientDashboard").then((m) => ({ default: m.PatientDashboard })));
 const PersonalDataCenter = lazy(() => import("@/pages/patient/PersonalDataCenter").then((m) => ({ default: m.PersonalDataCenter })));
@@ -37,6 +39,12 @@ const IdentityCenter = lazy(() => import("@/pages/identity/IdentityCenter").then
 const DigitalAssetCenter = lazy(() => import("@/pages/assets/DigitalAssetCenter").then((m) => ({ default: m.DigitalAssetCenter })));
 const AccessControlCenter = lazy(() => import("@/pages/access/AccessControlCenter").then((m) => ({ default: m.AccessControlCenter })));
 const UnauthorizedPage = lazy(() => import("@/pages/UnauthorizedPage").then((m) => ({ default: m.UnauthorizedPage })));
+
+function PortalEntry() {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <PageLoader message="Opening portal..." />;
+  return <Navigate to={user ? portalPath(user.role) : "/login"} replace />;
+}
 
 function App() {
   return (
@@ -113,7 +121,9 @@ function App() {
               <Route path="/dpo" element={<DPODashboard />} />
               <Route path="/dpo/compliance" element={<ComplianceDashboard />} />
               <Route path="/compliance" element={<ComplianceDashboard />} />
-              <Route path="/admin/register-patient" element={<RegisterPatient />} />
+              <Route path="/admin/register-patient" element={
+                <ProtectedRoute allowedRoles={["admin"]}><RegisterPatient /></ProtectedRoute>
+              } />
               <Route path="/admin/users" element={<IdentityGovernance />} />
               <Route path="/admin/operations" element={<DPDPOperationsCenter />} />
               <Route path="/admin/blockchain" element={<BlockchainExplorer />} />
@@ -122,7 +132,8 @@ function App() {
             </Route>
 
             {/* Defaults */}
-            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/walkthrough" element={<PatientWalkthrough />} />
+            <Route path="/" element={<PortalEntry />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
           </Suspense>

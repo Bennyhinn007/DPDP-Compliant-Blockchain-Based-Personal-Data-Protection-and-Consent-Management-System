@@ -120,6 +120,8 @@ export type ConsentType =
   | "marketing_access";
 
 export interface Consent {
+  processing_entity_id?: string | null;
+  selected_allergies?: string[];
   _id: string;
   patient_id: string;
   user_id: string;
@@ -135,6 +137,7 @@ export interface Consent {
 }
 
 export interface AuditEvent {
+  details?: { data_categories?: string[] };
   _id: string;
   actor_id: string;
   actor_role: string;
@@ -149,11 +152,13 @@ export interface AuditEvent {
 }
 
 export interface VerificationResult {
-  status: "VERIFIED" | "VERIFIED_MODIFIED" | "VERIFIED_REDACTED" | "INTEGRITY_VIOLATION" | "NO_ANCHOR";
+  status: "VERIFIED" | "LOCAL_MATCH" | "INTEGRITY_VIOLATION" | "NO_ANCHOR";
   message: string;
   record_id: string;
   current_hash?: string;
+  stored_hash?: string;
   blockchain_hash?: string;
+  explorer_url?: string | null;
   transaction_hash?: string;
   block_number?: number;
   anchored_at?: string;

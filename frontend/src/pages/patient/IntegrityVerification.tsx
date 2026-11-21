@@ -12,15 +12,13 @@ import {
   ShieldCheck,
   ShieldAlert,
   ShieldX,
-  Link2,
+  FileText,
   Hash,
   Box,
   CheckCircle2,
-  XCircle,
   Wifi,
   Copy,
   RefreshCw,
-  Lock,
 } from "lucide-react";
 import { patientService } from "@/services/patientService";
 import { integrityService } from "@/services/integrityService";
@@ -37,9 +35,8 @@ const STATUS_CONFIG: Record<
   VerificationResult["status"],
   { label: string; variant: "success" | "warning" | "danger" | "neutral"; icon: typeof ShieldCheck; color: string }
 > = {
-  VERIFIED: { label: "Verified", variant: "success", icon: ShieldCheck, color: "#10B981" },
-  VERIFIED_MODIFIED: { label: "Authorized Modification", variant: "warning", icon: ShieldCheck, color: "#F59E0B" },
-  VERIFIED_REDACTED: { label: "Lawfully Redacted", variant: "neutral", icon: Lock, color: "#6366F1" },
+  VERIFIED: { label: "Confirmed on-chain", variant: "success", icon: ShieldCheck, color: "#10B981" },
+  LOCAL_MATCH: { label: "Local match only", variant: "warning", icon: ShieldAlert, color: "#B45309" },
   INTEGRITY_VIOLATION: { label: "Integrity Violation", variant: "danger", icon: ShieldX, color: "#EF4444" },
   NO_ANCHOR: { label: "No Anchor", variant: "neutral", icon: ShieldAlert, color: "#9CA3AF" },
 };
@@ -48,7 +45,7 @@ export function IntegrityVerification() {
   const [results, setResults] = useState<Record<string, VerificationResult>>({});
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
 
-  const { data: records = [] } = useQuery({
+  const { data: records = [], isLoading, isError } = useQuery({
     queryKey: ["records"],
     queryFn: patientService.listRecords,
   });
@@ -77,16 +74,15 @@ export function IntegrityVerification() {
 
   // Compute stats from results
   const verified = Object.values(results).filter((r) => r.status === "VERIFIED").length;
-  const modified = Object.values(results).filter((r) => r.status === "VERIFIED_MODIFIED").length;
-  const redacted = Object.values(results).filter((r) => r.status === "VERIFIED_REDACTED").length;
+  const local = Object.values(results).filter((r) => r.status === "LOCAL_MATCH").length;
   const violations = Object.values(results).filter((r) => r.status === "INTEGRITY_VIOLATION").length;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <PageHero
-        title="Data Integrity Verification"
-        subtitle="Verify healthcare records against blockchain-anchored SHA-256 hashes"
+        title="Record integrity"
+        subtitle="Check each record against its saved hash and the transaction on Ethereum."
         icon={ShieldCheck}
         actions={
           <Button variant="accent" onClick={verifyAll} disabled={records.length === 0 || verifyMutation.isPending}>
@@ -98,14 +94,11 @@ export function IntegrityVerification() {
 
       {/* Stats row */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Anchored Records" value={status?.total_anchors ?? 0} icon={Link2} variant="primary" />
-        <StatCard label="Verified" value={verified} icon={ShieldCheck} variant="success" />
-        <StatCard label="Modified" value={modified + redacted} icon={ShieldAlert} variant="warning" />
+        <StatCard label="Your records" value={records.length} icon={FileText} variant="primary" />
+        <StatCard label="Confirmed on-chain" value={verified} icon={ShieldCheck} variant="success" />
+        <StatCard label="Local match only" value={local} icon={ShieldAlert} variant="warning" />
         <StatCard label="Violations" value={violations} icon={ShieldX} variant="secondary" />
       </div>
-
-      {/* Live tamper-attempt demo */}
-      <TamperDemo />
 
       {/* Blockchain network status */}
       <Card>
@@ -115,14 +108,14 @@ export function IntegrityVerification() {
               <div className="flex items-center gap-2">
                 <Wifi className={`h-4 w-4 ${status?.connected ? "text-success" : "text-danger"}`} />
                 <span className="text-sm font-medium text-neutral-700">
-                  {status?.connected ? "Connected" : "Disconnected"}
+                  {status ? (status.connected ? "Connected" : "Disconnected") : "Unknown"}
                 </span>
               </div>
               <div className="flex items-center gap-2 text-sm text-neutral-500">
-                <span className="font-medium text-neutral-600">Network:</span> Ganache (Local Ethereum)
+                <span className="font-medium text-neutral-600">Network:</span> {status?.network ?? "—"}
               </div>
               <div className="flex items-center gap-2 text-sm text-neutral-500">
-                <span className="font-medium text-neutral-600">Chain ID:</span> 1337
+                <span className="font-medium text-neutral-600">Chain ID:</span> {status?.chain_id ?? "—"}
               </div>
               <div className="flex items-center gap-2 text-sm text-neutral-500">
                 <Box className="h-3.5 w-3.5" />
@@ -130,7 +123,7 @@ export function IntegrityVerification() {
               </div>
             </div>
             <Badge variant={status?.connected ? "success" : "danger"}>
-              {status?.connected ? "● Live" : "● Offline"}
+              {status ? (status.connected ? "Live" : "Offline") : "Unknown"}
             </Badge>
           </div>
         </CardContent>
@@ -138,11 +131,12 @@ export function IntegrityVerification() {
 
       {/* Verification results */}
       <div className="space-y-3">
-        {records.length === 0 ? (
+        {verifyMutation.isError && <p role="alert">Verification could not be completed. Try again.</p>}
+        {isLoading || isError || records.length === 0 ? (
           <Card>
             <CardContent className="py-16 text-center">
               <ShieldCheck className="mx-auto h-12 w-12 text-neutral-300" />
-              <p className="mt-4 text-sm text-neutral-400">No healthcare records to verify</p>
+              <p className="mt-4 text-sm text-neutral-400">{isError ? "Your records could not be loaded." : isLoading ? "Loading your records…" : "No healthcare records to verify"}</p>
             </CardContent>
           </Card>
         ) : (
@@ -187,16 +181,14 @@ export function IntegrityVerification() {
                         </div>
                         <div className="flex items-center gap-2">
                           {config && <Badge variant={config.variant}>{config.label}</Badge>}
-                          {!result && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => verifyMutation.mutate(rec._id)}
-                              disabled={verifyMutation.isPending}
-                            >
-                              Verify
-                            </Button>
-                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => verifyMutation.mutate(rec._id)}
+                            disabled={verifyMutation.isPending}
+                          >
+                            {result ? "Check again" : "Verify"}
+                          </Button>
                         </div>
                       </div>
 
@@ -216,10 +208,10 @@ export function IntegrityVerification() {
                               copied={copiedHash === result.current_hash}
                             />
                             <HashCell
-                              label="Blockchain Hash"
-                              value={result.blockchain_hash}
+                              label="Saved hash"
+                              value={result.stored_hash}
                               onCopy={copyHash}
-                              copied={copiedHash === result.blockchain_hash}
+                              copied={copiedHash === result.stored_hash}
                             />
                             <HashCell
                               label="Transaction"
@@ -237,31 +229,12 @@ export function IntegrityVerification() {
                             </div>
                           </div>
 
-                          {/* Hash match indicator */}
-                          <div className="mt-3 flex items-center gap-2 rounded-md border border-neutral-100 px-3 py-2">
-                            {result.current_hash === result.blockchain_hash ? (
-                              <>
-                                <CheckCircle2 className="h-4 w-4 text-success" />
-                                <span className="text-xs font-medium text-success">
-                                  Hashes match — record integrity confirmed
-                                </span>
-                              </>
-                            ) : result.status.startsWith("VERIFIED") ? (
-                              <>
-                                <CheckCircle2 className="h-4 w-4 text-primary-600" />
-                                <span className="text-xs font-medium text-primary-600">
-                                  Authorized modification — chameleon hash proof valid
-                                </span>
-                              </>
-                            ) : (
-                              <>
-                                <XCircle className="h-4 w-4 text-danger" />
-                                <span className="text-xs font-medium text-danger">
-                                  Hash mismatch — possible unauthorized modification
-                                </span>
-                              </>
-                            )}
-                          </div>
+                          {result.explorer_url && (
+                            <a href={result.explorer_url} target="_blank" rel="noreferrer"
+                               className="mt-3 inline-block text-sm font-medium text-primary-700 underline">
+                              View confirmed transaction
+                            </a>
+                          )}
                         </motion.div>
                       )}
                     </div>
@@ -272,6 +245,7 @@ export function IntegrityVerification() {
           })
         )}
       </div>
+      <TamperDemo />
     </div>
   );
 }

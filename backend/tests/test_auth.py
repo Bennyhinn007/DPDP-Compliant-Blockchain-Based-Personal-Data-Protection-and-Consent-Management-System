@@ -9,6 +9,7 @@ Tests cover:
 """
 
 import pytest
+from tests.accounts import create_test_account
 from app import create_app
 from app.extensions import get_db
 
@@ -59,16 +60,14 @@ class TestRegistration:
         assert data["user"]["email"] == "patient@example.com"
         assert "id" in data["user"]  # UUID present
 
-    def test_register_admin_success(self, client):
+    @pytest.mark.parametrize("role", ["admin", "doctor", "registration_staff", "dpo", "pharmacy_staff"])
+    def test_public_signup_rejects_staff_roles(self, client, role):
         response = client.post("/api/v1/auth/register", json={
-            "email": "admin@example.com",
-            "password": "AdminPass456",
-            "role": "admin",
-            "full_name": "System Admin",
+            "email": "staff@example.invalid", "password": "ExamplePass123",
+            "role": role, "full_name": "Hospital Staff",
         })
-        assert response.status_code == 201
-        data = response.get_json()
-        assert data["user"]["role"] == "admin"
+        assert response.status_code == 422
+        assert get_db()["users"].count_documents({}) == 0
 
     def test_register_invalid_email(self, client):
         response = client.post("/api/v1/auth/register", json={
@@ -200,18 +199,57 @@ class TestLogin:
 # JWT TESTS
 # ─────────────────────────────────────────────────────────────────────
 
+class TestHospitalRegistration:
+    @pytest.mark.parametrize("role", ["doctor", "registration_staff", "admin", "dpo", "pharmacy_staff", "patient"])
+    def test_admin_provisions_account(self, client, role):
+        create_test_account(client, email="admin@example.invalid", password="ExamplePass123",
+                            role="admin", full_name="Hospital Admin")
+        login = client.post("/api/v1/auth/login", json={
+            "email": "admin@example.invalid", "password": "ExamplePass123",
+        })
+        admin = login.json
+        account = {"email": "new@example.invalid", "password": "InitialPass123",
+                   "full_name": "New User", "role": role}
+        response = client.post("/api/v1/patients/register", json=account,
+                               headers={"Authorization": "Bearer " + admin["access_token"]})
+        assert response.status_code == 201
+        assert response.json["role"] == role
+        assert bool(response.json["patient_id"]) == (role == "patient")
+        assert "password" not in response.json
+        assert get_db().audit_logs.find_one({
+            "actor_id": admin["user"]["id"], "resource_id": response.json["user_id"],
+            "details.registered_role": role,
+        })
+        new_login = client.post("/api/v1/auth/login", json={
+            "email": account["email"], "password": account["password"],
+        })
+        assert new_login.json["user"]["role"] == role
+
+    def test_front_desk_registers_patients_only(self, client):
+        create_test_account(client, email="desk@example.invalid", password="ExamplePass123",
+                            role="registration_staff", full_name="Registration Desk")
+        login = client.post("/api/v1/auth/login", json={
+            "email": "desk@example.invalid", "password": "ExamplePass123",
+        })
+        headers = {"Authorization": "Bearer " + login.json["access_token"]}
+        account = {"email": "new@example.invalid", "password": "InitialPass123", "full_name": "New User"}
+        for role in ["doctor", "registration_staff", "admin", "dpo", "pharmacy_staff"]:
+            response = client.post("/api/v1/patients/register", json={**account, "role": role}, headers=headers)
+            assert response.status_code == 403
+        response = client.post("/api/v1/patients/register", json=account, headers=headers)
+        assert response.status_code == 201
+        assert response.json["patient_id"]
+
+
 class TestJWT:
     """Test JWT authentication."""
 
     def _get_token(self, client, role="patient"):
         """Helper: register + login, return access token."""
         email = f"{role}@example.com"
-        client.post("/api/v1/auth/register", json={
-            "email": email,
-            "password": "TestPass123",
-            "role": role,
-            "full_name": f"Test {role.title()}",
-        })
+        create_test_account(
+            client, email=email, password="TestPass123", role=role, full_name=f"Test {role.title()}",
+        )
         resp = client.post("/api/v1/auth/login", json={
             "email": email,
             "password": "TestPass123",
@@ -256,12 +294,9 @@ class TestRBAC:
     def _get_token(self, client, role):
         """Helper: register + login, return access token."""
         email = f"{role}user@example.com"
-        client.post("/api/v1/auth/register", json={
-            "email": email,
-            "password": "TestPass123",
-            "role": role,
-            "full_name": f"Test {role.title()}",
-        })
+        create_test_account(
+            client, email=email, password="TestPass123", role=role, full_name=f"Test {role.title()}",
+        )
         resp = client.post("/api/v1/auth/login", json={
             "email": email,
             "password": "TestPass123",

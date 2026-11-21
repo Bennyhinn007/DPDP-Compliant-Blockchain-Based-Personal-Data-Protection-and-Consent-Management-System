@@ -94,7 +94,7 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     // Registration staff portal — their ONLY nav item (own restricted path).
-    label: "Register User",
+    label: "Register Patient",
     path: "/staff/register-patient",
     icon: UserPlus,
     roles: ["registration_staff"],
@@ -146,4 +146,15 @@ export const NAV_ITEMS: NavItem[] = [
 
 export function getNavItemsForRole(role: UserRole): NavItem[] {
   return NAV_ITEMS.filter((item) => item.roles.includes(role));
+}
+
+export function portalPath(role: string, patientPath = "/dashboard"): string {
+  switch (role) {
+    case "admin":
+    case "dpo": return "/dpo";
+    case "doctor": return "/doctor";
+    case "registration_staff": return "/staff/register-patient";
+    case "patient": return patientPath;
+    default: return "/unauthorized";
+  }
 }

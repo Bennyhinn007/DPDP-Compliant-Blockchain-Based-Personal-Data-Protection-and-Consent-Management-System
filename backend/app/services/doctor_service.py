@@ -5,10 +5,10 @@ Provides consent-gated access to patient healthcare records.
 Every access attempt is audited regardless of outcome.
 """
 
-from app.utils.helpers import generate_uuid, utc_now
-from app.utils.errors import NotFoundError, AuthorizationError, ConsentRequiredError
+from app.utils.errors import NotFoundError, ConsentRequiredError
 from app.services.encryption_service import get_encryption_service
 from app.services.consent_service import ConsentService
+from app.services.provider_directory import doctor_recipient_keys
 from app.services.audit_service import AuditService
 
 
@@ -32,9 +32,10 @@ class DoctorService:
         Does NOT require consent (searching ≠ accessing records).
         """
         # Get all non-redacted patients
-        patients = list(self.patients.find({"redacted": False}).limit(50))
+        patients = list(self.patients.find({"redacted": False}, {"full_name": 1, "user_id": 1}).limit(50))
         results = []
 
+        recipient_keys = doctor_recipient_keys(self.db, doctor_id)
         for p in patients:
             decrypted = self.enc.decrypt_document(p)
             name = decrypted.get("full_name", "")
@@ -43,7 +44,7 @@ class DoctorService:
                     "_id": p["_id"],
                     "user_id": p["user_id"],
                     "full_name": name,
-                    "has_treatment_consent": self._has_consent(p["_id"]),
+                    "has_treatment_consent": bool(self._chart_consent(p["_id"], recipient_keys)),
                 })
 
         # Audit the search
@@ -74,16 +75,28 @@ class DoctorService:
             ConsentRequiredError: No active consent for this patient
         """
         # Get patient
-        patient = self.patients.find_one({"_id": patient_id})
+        patient = self.patients.find_one({"_id": patient_id}, {"user_id": 1})
         if not patient:
             raise NotFoundError("Patient not found")
 
-        patient_decrypted = self.enc.decrypt_document(patient)
-
         # Check consent
-        consent = self.consent_svc.get_active_consent(patient_id, "healthcare_treatment")
+        recipient_keys = doctor_recipient_keys(self.db, doctor_id)
+        consent = self._chart_consent(patient_id, recipient_keys)
 
-        if not consent:
+        scope = consent.get("data_categories_in_scope") if consent else None
+        # These are the two categories served by this chart endpoint.
+        chart_scope = [key for key in ("allergies", "medical_history")
+                       if isinstance(scope, list) and key in scope]
+        if not chart_scope:
+            latest = consent or self.consent_svc.latest_inactive_consent(patient_id, "healthcare_treatment", recipient_keys)
+            status = latest["status"] if latest else "absent"
+            if consent:
+                status = "scope_restricted"
+                message = "The patient has not shared allergies or medical history for this chart."
+            elif status == "expired":
+                message = "Treatment consent has expired."
+            else:
+                message = "Active treatment consent is required to open this chart."
             # Audit the DENIED access
             self.audit_svc.log_event(
                 actor_id=doctor_id,
@@ -91,22 +104,42 @@ class DoctorService:
                 action_type="read",
                 resource_type="healthcare_records",
                 patient_id=patient["user_id"],
-                reason="Access DENIED: No active healthcare_treatment consent",
+                reason=f"Access denied. {message}",
                 severity="warning",
-                details={"patient_id": patient_id, "consent_status": "absent"},
+                details={"patient_id": patient_id, "consent_status": status,
+                         "consent_id": latest["_id"] if latest else None},
             )
-            raise ConsentRequiredError(
-                f"Patient '{patient_decrypted.get('full_name', 'Unknown')}' has not granted "
-                f"healthcare treatment consent. Access denied per DPDP Act."
-            )
+            raise ConsentRequiredError(message, consent_status=status)
 
-        # Consent exists — fetch records
-        records_raw = list(
-            self.records.find({"patient_id": patient_id, "redacted": False})
-            .sort("created_at", -1)
-            .limit(20)
-        )
-        records = [self.enc.decrypt_document(r) for r in records_raw]
+        profile_fields = {}
+        if "allergies" in chart_scope:
+            profile_fields["allergies"] = 1
+        if "medical_history" in chart_scope:
+            profile_fields["blood_group"] = 1
+        profile = self.enc.decrypt_document(self.patients.find_one({"_id": patient_id}, profile_fields))
+        if profile is None:
+            raise NotFoundError("Patient not found")
+
+        if "allergies" in chart_scope:
+            selected = self.consent_svc.selected_allergies(consent)
+            current = profile.get("allergies")
+            profile["allergies"] = [a for a in selected if isinstance(current, list) and a in current]
+
+        records = []
+        if "medical_history" in chart_scope:
+            # New document fields must be explicitly assigned to a category before disclosure.
+            record_fields = {key: 1 for key in (
+                "record_type", "title", "description", "diagnosis_codes", "symptoms",
+                "treatment_notes", "follow_up_date", "created_at", "version",
+            )}
+            cursor = self.records.find({"patient_id": patient_id, "redacted": False}, record_fields)
+            records = [self.enc.decrypt_document(doc) for doc in cursor.sort("created_at", -1).limit(20)]
+
+        disclosed = []
+        if "allergies" in profile and profile["allergies"] is not None:
+            disclosed.append("allergies")
+        if records or profile.get("blood_group"):
+            disclosed.append("medical_history")
 
         # Audit the GRANTED access
         self.audit_svc.log_event(
@@ -120,6 +153,7 @@ class DoctorService:
                 "patient_id": patient_id,
                 "consent_id": consent["_id"],
                 "records_accessed": len(records),
+                "data_categories": disclosed,
             },
         )
 
@@ -130,29 +164,28 @@ class DoctorService:
             accessor_role="doctor",
             accessor_name=doctor_name,
             access_type="view",
-            data_categories=["medical_history", "allergies", "prescriptions"],
+            data_categories=disclosed,
             purpose="Healthcare treatment consultation",
             consent_id=consent["_id"],
         )
 
         return {
-            "patient": {
-                "_id": patient_id,
-                "full_name": patient_decrypted.get("full_name"),
-                "blood_group": patient_decrypted.get("blood_group"),
-                "allergies": patient_decrypted.get("allergies", []),
-            },
+            "patient": profile,
             "consent": {
                 "_id": consent["_id"],
                 "consent_type": consent["consent_type"],
                 "granted_at": consent["granted_at"],
                 "expires_at": consent["expires_at"],
+                "chart_scope": chart_scope,
             },
             "records": records,
             "access_status": "granted",
         }
 
-    def _has_consent(self, patient_id: str) -> bool:
-        """Check if patient has active healthcare treatment consent."""
-        consent = self.consent_svc.get_active_consent(patient_id, "healthcare_treatment")
-        return consent is not None
+    def _chart_consent(self, patient_id, recipient_keys):
+        # A direct grant takes precedence over a matching hospital grant.
+        for key in recipient_keys:
+            grant = self.consent_svc.get_active_consent(patient_id, "healthcare_treatment", key)
+            if grant:
+                return grant
+        return None

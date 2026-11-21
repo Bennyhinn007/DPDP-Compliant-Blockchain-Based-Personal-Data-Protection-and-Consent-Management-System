@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { getErrorMessage } from "@/services/api";
+import { portalPath } from "@/lib/navigation";
 
 const GIS_SRC = "https://accounts.google.com/gsi/client";
 
@@ -74,13 +75,7 @@ export function GoogleSignInButton({
           callback: async (response: { credential: string }) => {
             try {
               const user = await loginWithGoogle(response.credential);
-              if (user.role === "admin" || user.role === "dpo") {
-                navigate("/dpo", { replace: true });
-              } else if (user.role === "doctor") {
-                navigate("/doctor", { replace: true });
-              } else {
-                navigate(redirectTo, { replace: true });
-              }
+              navigate(portalPath(user.role, redirectTo), { replace: true });
             } catch (err) {
               onError?.(getErrorMessage(err));
             }

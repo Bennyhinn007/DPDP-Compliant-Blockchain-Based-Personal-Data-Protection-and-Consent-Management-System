@@ -99,6 +99,11 @@ class PatientService:
         }
 
         filtered_updates = {k: v for k, v in updates.items() if k in allowed_fields}
+        if "allergies" in filtered_updates:
+            allergies = filtered_updates["allergies"]
+            if not isinstance(allergies, list) or any(not isinstance(a, str) or not a.strip() for a in allergies):
+                raise ValidationError("Enter allergies as a list of names.")
+            filtered_updates["allergies"] = list(dict.fromkeys(a.strip() for a in allergies))
         if not filtered_updates:
             raise ValidationError("No valid fields to update")
 

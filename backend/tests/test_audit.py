@@ -12,6 +12,7 @@ Tests cover:
 """
 
 import pytest
+from tests.accounts import create_test_account
 from app import create_app
 from app.extensions import get_db
 from app.services.audit_service import AuditService
@@ -44,10 +45,9 @@ def clean_db(app):
 
 
 def register_and_login(client, email="patient@test.com", role="patient"):
-    client.post("/api/v1/auth/register", json={
-        "email": email, "password": "TestPass123",
-        "role": role, "full_name": "Test User",
-    })
+    create_test_account(
+        client, email=email, password="TestPass123", role=role, full_name="Test User",
+    )
     resp = client.post("/api/v1/auth/login", json={
         "email": email, "password": "TestPass123",
     })

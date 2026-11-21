@@ -191,7 +191,7 @@ class BlockchainService:
             raw = getattr(signed, "raw_transaction", None) or signed.rawTransaction
             tx_hash = self.w3.eth.send_raw_transaction(raw)
             receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=180)
-            return "0x" + receipt.transactionHash.hex(), receipt.blockNumber
+            return self._mined_transaction(receipt)
 
         # ── Ganache: unlocked account ──────────────────────────────────
         tx = {
@@ -204,7 +204,13 @@ class BlockchainService:
         }
         tx_hash = self.w3.eth.send_transaction(tx)
         receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=10)
-        return "0x" + receipt.transactionHash.hex(), receipt.blockNumber
+        return self._mined_transaction(receipt)
+
+    @staticmethod
+    def _mined_transaction(receipt) -> tuple:
+        if receipt.status != 1:
+            raise ValueError("Anchor transaction reverted")
+        return Web3.to_hex(receipt.transactionHash), receipt.blockNumber
 
     def explorer_link(self, tx_hash: str) -> Optional[str]:
         """Build a human-clickable block-explorer URL for a tx (Sepolia)."""
@@ -217,58 +223,57 @@ class BlockchainService:
     # ─────────────────────────────────────────────────────────────────
 
     def verify_record(self, resource_type: str, resource_id: str, current_record: dict) -> dict:
-        """
-        Verify a record's integrity against its blockchain-stored hash.
-
-        Computes the current hash and compares against the latest anchor.
-
-        Returns:
-            Verification result dict with status and details
-        """
-        now = utc_now()
-
-        # Get the latest blockchain anchor for this resource
-        anchor = self.anchors.find_one(
-            {"resource_type": resource_type, "resource_id": resource_id},
-            sort=[("created_at", -1)],
-        )
-
-        if not anchor:
-            return {
-                "status": "NO_ANCHOR",
-                "message": "No blockchain anchor found for this record.",
-                "record_id": resource_id,
-                "verified_at": now,
-            }
-
-        # Compute current hash
+        """Compare the stored document with its local anchor and with Ethereum."""
         current_hash = self.compute_record_hash(current_record)
-        blockchain_hash = anchor["data_hash"]
+        result = {
+            "record_id": resource_id,
+            "current_hash": current_hash,
+            "verified_at": utc_now(),
+            "status": "NO_ANCHOR",
+            "message": "No integrity hash has been recorded for this record.",
+        }
+        anchor = self.get_anchor(resource_type, resource_id)
+        if anchor is None:
+            return result
 
-        if current_hash == blockchain_hash:
-            return {
-                "status": "VERIFIED",
-                "message": "Record integrity confirmed. Hash matches blockchain anchor.",
-                "record_id": resource_id,
-                "current_hash": current_hash,
-                "blockchain_hash": blockchain_hash,
-                "transaction_hash": anchor.get("transaction_hash"),
-                "block_number": anchor.get("block_number"),
-                "anchored_at": anchor["created_at"],
-                "verified_at": now,
-            }
-        else:
-            return {
-                "status": "INTEGRITY_VIOLATION",
-                "message": "Record hash does not match blockchain anchor. Possible tampering.",
-                "record_id": resource_id,
-                "current_hash": current_hash,
-                "blockchain_hash": blockchain_hash,
-                "transaction_hash": anchor.get("transaction_hash"),
-                "block_number": anchor.get("block_number"),
-                "anchored_at": anchor["created_at"],
-                "verified_at": now,
-            }
+        saved_hash = anchor["data_hash"]
+        tx_hash = anchor.get("transaction_hash")
+        result.update(
+            stored_hash=saved_hash,
+            transaction_hash=tx_hash,
+            anchored_at=anchor["created_at"],
+        )
+        if current_hash != saved_hash:
+            return dict(result, status="INTEGRITY_VIOLATION",
+                        message="This record differs from its saved integrity hash.")
+
+        result.update(status="LOCAL_MATCH", message="The local hash matches. No confirmed transaction is recorded.")
+        if not tx_hash:
+            return result
+        if anchor.get("network", self._network) != self._network:
+            return dict(result, message="The local hash matches. The anchor belongs to another network.")
+        if not self.is_connected:
+            return dict(result, message="The local hash matches. The blockchain is unavailable for verification.")
+
+        try:
+            if self._chain_id and self.w3.eth.chain_id != self._chain_id:
+                return dict(result, message="The local hash matches. The node is connected to a different chain.")
+            receipt = self.w3.eth.get_transaction_receipt(tx_hash)
+            if receipt["status"] != 1:
+                return dict(result, message="The local hash matches. The anchor transaction failed.")
+            transaction = self.w3.eth.get_transaction(tx_hash)
+            payload = bytes(transaction["input"])
+        except TransactionNotFound:
+            return dict(result, message="The local hash matches. The transaction could not be found on this chain.")
+        except Exception:
+            return dict(result, message="The local hash matches. The node could not confirm the transaction.")
+
+        if payload != f"{resource_id}|{current_hash}".encode("utf-8"):
+            return dict(result, status="INTEGRITY_VIOLATION",
+                        message="The transaction payload does not match this record ID and hash.")
+        return dict(result, status="VERIFIED", blockchain_hash=current_hash,
+                    block_number=receipt["blockNumber"], explorer_url=self.explorer_link(tx_hash),
+                    message="The mined transaction contains this record ID and its current integrity hash.")
 
     def get_anchor(self, resource_type: str, resource_id: str) -> Optional[dict]:
         """Get the latest anchor for a resource."""

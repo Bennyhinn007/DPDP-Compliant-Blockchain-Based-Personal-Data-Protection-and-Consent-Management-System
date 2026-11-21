@@ -35,6 +35,7 @@ export function PersonalDataCenter() {
   const [actionMsg, setActionMsg] = useState("");
   const [locating, setLocating] = useState(false);
   const [locationDraft, setLocationDraft] = useState<LiveLocation | null>(null);
+  const [allergyDraft, setAllergyDraft] = useState<string | null>(null);
   const [editedAddress, setEditedAddress] = useState("");
 
   const { data: profile } = useQuery({
@@ -45,6 +46,17 @@ export function PersonalDataCenter() {
   const { data: records = [] } = useQuery({
     queryKey: ["records"],
     queryFn: patientService.listRecords,
+  });
+
+  const saveAllergies = useMutation({
+    mutationFn: (draft: string) => patientService.updateProfile({
+      allergies: [...new Set(draft.split("\n").map(line => line.trim()).filter(Boolean))],
+    }),
+    onSuccess: patient => {
+      queryClient.setQueryData(["profile"], patient);
+      setAllergyDraft(null);
+      setActionMsg("Allergies saved. Choose which entries to share in the Consent Center.");
+    },
   });
 
   const updateAddressMutation = useMutation({
@@ -124,10 +136,16 @@ export function PersonalDataCenter() {
                   </Button>
                 </dd>
               </div>
-              <Field
-                label="Allergies"
-                value={profile?.allergies?.length ? profile.allergies.join(", ") : "None recorded"}
-              />
+              <div>
+                <dt className="text-xs font-medium text-neutral-500">Allergies</dt>
+                <dd className="mt-1 space-y-2 text-sm">
+                  <p>{Array.isArray(profile?.allergies) && profile.allergies.length ? profile.allergies.join(", ") : "None recorded"}</p>
+                  <Button size="sm" variant="outline" disabled={!profile} onClick={() => {
+                    saveAllergies.reset();
+                    setAllergyDraft(Array.isArray(profile?.allergies) ? profile.allergies.join("\n") : "");
+                  }}>Edit allergies</Button>
+                </dd>
+              </div>
             </dl>
           </CardContent>
         </Card>
@@ -200,7 +218,7 @@ export function PersonalDataCenter() {
                       <span>{formatDate(rec.created_at)}</span>
                       {rec.verification_hash && (
                         <span className="flex items-center gap-0.5 text-success">
-                          <ShieldCheck className="h-3 w-3" /> Verified
+                          <ShieldCheck className="h-3 w-3" /> Hash recorded
                         </span>
                       )}
                     </div>
@@ -247,6 +265,16 @@ export function PersonalDataCenter() {
           )}
         </CardContent>
       </Card>
+
+      {allergyDraft !== null && <Dialog open onClose={() => setAllergyDraft(null)} title="Edit allergies">
+        <div className="space-y-3">
+          <Label htmlFor="allergy-list">Saved allergies, one per line</Label>
+          <Textarea id="allergy-list" value={allergyDraft} onChange={e => setAllergyDraft(e.target.value)} />
+          <p className="text-xs text-neutral-600">New entries require a new or updated consent before a doctor can see them.</p>
+          {saveAllergies.isError && <p role="alert">{getErrorMessage(saveAllergies.error)}</p>}
+          <Button disabled={saveAllergies.isPending} onClick={() => saveAllergies.mutate(allergyDraft)}>Save allergies</Button>
+        </div>
+      </Dialog>}
 
       {/* Correction dialog */}
       {correctTarget && (
@@ -354,7 +382,7 @@ export function PersonalDataCenter() {
               <Badge variant="neutral">{humanize(viewTarget.record_type)}</Badge>
               <span className="text-xs text-neutral-400">{formatDate(viewTarget.created_at)}</span>
               {viewTarget.verification_hash && (
-                <Badge variant="success">Blockchain Verified</Badge>
+                <Badge variant="neutral">Integrity hash recorded</Badge>
               )}
             </div>
             {/* Data provenance — where this record came from */}

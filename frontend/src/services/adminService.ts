@@ -111,6 +111,7 @@ export interface SystemHealth {
 }
 
 export interface RegisterPatientInput {
+  hospital_id?: string;
   full_name: string;
   email: string;
   password: string;

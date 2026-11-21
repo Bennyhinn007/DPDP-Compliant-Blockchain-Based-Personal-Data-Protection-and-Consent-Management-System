@@ -6,14 +6,16 @@
 
 import { useState, type FormEvent } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import { ShieldCheck, Lock, Mail, AlertCircle, KeyRound, Fingerprint } from "lucide-react";
+import { Lock, Mail, AlertCircle, KeyRound, Fingerprint } from "lucide-react";
 import { isAxiosError } from "axios";
 import { useAuth } from "@/contexts/AuthContext";
+import { portalPath } from "@/lib/navigation";
 import { getErrorMessage } from "@/services/api";
 import { FingerprintError } from "@/lib/fingerprint";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NurseMascot } from "@/components/shared/NurseMascot";
 import { GoogleSignInButton } from "@/components/shared/GoogleSignInButton";
 
 export function LoginPage() {
@@ -51,15 +53,7 @@ export function LoginPage() {
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/dashboard";
 
   const routeByRole = (role: string) => {
-    if (role === "admin" || role === "dpo") {
-      navigate("/dpo", { replace: true });
-    } else if (role === "doctor") {
-      navigate("/doctor", { replace: true });
-    } else if (role === "registration_staff") {
-      navigate("/staff/register-patient", { replace: true });
-    } else {
-      navigate(from, { replace: true });
-    }
+    navigate(portalPath(role, from), { replace: true });
   };
 
   const handleDidLogin = async () => {
@@ -158,6 +152,9 @@ export function LoginPage() {
           </p>
         </div>
 
+        {/* Mascot: follows the cursor, reacts on click */}
+        <NurseMascot />
+
         {/* Login card */}
         <div className="rounded-xl border border-neutral-200 bg-white p-8 shadow-sm">
           <h2 className="mb-1 text-lg font-semibold text-neutral-800">
@@ -170,6 +167,12 @@ export function LoginPage() {
                 : "Enter the 6-digit code from your authenticator app."
               : "Access your health data securely"}
           </p>
+
+          {!mfaStep && (
+            <p className="mb-4 text-sm text-neutral-600">
+              New patient? <Link to="/register" className="font-semibold text-primary-700 underline">Create a patient account</Link>
+            </p>
+          )}
 
           {error && (
             <div className="mb-4 flex items-center gap-2 rounded-md bg-danger/5 px-3 py-2.5 text-sm text-danger">
@@ -308,17 +311,11 @@ export function LoginPage() {
           </>
           )}
 
-          <div className="mt-6 flex items-center justify-center gap-2 text-xs text-neutral-400">
-            <ShieldCheck className="h-3.5 w-3.5 text-success" />
-            DPDP Act compliant · Data residency: India
-          </div>
-
-          <p className="mt-4 text-center text-sm text-neutral-500">
-            Don&apos;t have an account?{" "}
-            <Link to="/register" className="font-medium text-primary-600 hover:text-primary-700">
-              Register
-            </Link>
+          <p className="mt-6 text-center text-sm">
+            <Link to="/walkthrough" className="font-medium text-primary-600 hover:underline">Explore the sample patient walkthrough</Link>
           </p>
+
+
         </div>
       </div>
     </div>

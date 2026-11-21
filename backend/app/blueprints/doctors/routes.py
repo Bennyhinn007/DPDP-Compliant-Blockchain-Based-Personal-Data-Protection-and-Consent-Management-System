@@ -63,13 +63,17 @@ def get_patient_records(patient_id):
 
     try:
         result = svc.get_patient_records(patient_id, g.current_user_id, doctor_name)
-        return jsonify(result), 200
+        response = jsonify(result)
+        response.headers["Cache-Control"] = "no-store"
+        return response, 200
     except ConsentRequiredError as e:
         return jsonify({
             "error": True,
             "access_status": "denied",
             "message": str(e),
-            "reason": "CONSENT_NOT_GRANTED",
+            "reason": {"expired": "CONSENT_EXPIRED", "scope_restricted": "CONSENT_SCOPE_RESTRICTED"}.get(
+                e.consent_status, "CONSENT_NOT_GRANTED"
+            ),
             "patient_id": patient_id,
             "required_consent": "healthcare_treatment",
         }), 403

@@ -11,6 +11,7 @@ behavior mandated by the spec (chain unreachable in the test env).
 
 import pytest
 
+from tests.accounts import create_test_account
 from app import create_app
 from app.extensions import get_db
 from app.services.contract_service import ContractService
@@ -76,10 +77,9 @@ class TestContractServiceDegradation:
 # ─────────────────────────────────────────────────────────────────────
 
 def _admin_token(client):
-    client.post("/api/v1/auth/register", json={
-        "email": "admin_roles@example.com", "password": "AdminPass123",
-        "role": "admin", "full_name": "Role Admin",
-    })
+    create_test_account(
+        client, email="admin_roles@example.com", password="AdminPass123", role="admin", full_name="Role Admin",
+    )
     resp = client.post("/api/v1/auth/login", json={
         "email": "admin_roles@example.com", "password": "AdminPass123",
     })

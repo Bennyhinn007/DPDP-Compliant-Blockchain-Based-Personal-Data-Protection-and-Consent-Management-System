@@ -42,7 +42,7 @@ export function RegisterPage() {
 
     setLoading(true);
     try {
-      await authService.register(email, password, "patient", fullName);
+      await authService.register(email, password, fullName);
       setSuccess(true);
       setTimeout(() => navigate("/login"), 2000);
     } catch (err) {
@@ -81,7 +81,7 @@ export function RegisterPage() {
         {/* Form */}
         <div className="rounded-xl border border-neutral-200 bg-white p-8 shadow-sm">
           <h2 className="mb-1 text-lg font-semibold text-neutral-800">Register</h2>
-          <p className="mb-5 text-sm text-neutral-500">Your data is protected under the DPDP Act</p>
+          <p className="mb-5 text-sm text-neutral-500">For a staff account, contact your hospital administrator.</p>
 
           {error && (
             <div className="mb-4 flex items-center gap-2 rounded-md bg-danger/5 px-3 py-2.5 text-sm text-danger">

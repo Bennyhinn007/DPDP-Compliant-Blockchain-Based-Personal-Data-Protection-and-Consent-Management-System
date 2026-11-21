@@ -10,6 +10,7 @@ Tests cover:
 """
 
 import pytest
+from tests.accounts import create_test_account
 from app import create_app
 from app.extensions import get_db
 
@@ -45,10 +46,9 @@ def clean_db(app):
 
 
 def register_and_login(client, email, role="patient"):
-    client.post("/api/v1/auth/register", json={
-        "email": email, "password": "TestPass123",
-        "role": role, "full_name": f"User {role}",
-    })
+    create_test_account(
+        client, email=email, password="TestPass123", role=role, full_name=f"User {role}",
+    )
     resp = client.post("/api/v1/auth/login", json={
         "email": email, "password": "TestPass123",
     })
@@ -71,7 +71,7 @@ def seed_data(client, patient_token, admin_token):
     # Grant consent
     client.post("/api/v1/consents/grant", json={
         "consent_type": "healthcare_treatment",
-        "processing_entity_name": "Test Hospital",
+        "recipient": {"kind": "hospital", "hospital_id": "citycare"},
         "expiry_days": 365,
     }, headers=auth(patient_token))
 

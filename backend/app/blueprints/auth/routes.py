@@ -91,7 +91,7 @@ def register():
     user = auth_service.register(
         email=data.get("email", "").strip(),
         password=data.get("password", ""),
-        role=data.get("role", "").strip(),
+        role=data.get("role", "patient"),
         full_name=data.get("full_name", "").strip(),
     )
 

@@ -300,42 +300,43 @@ class TestRecordErasure:
 class TestVerificationStates:
     """Test integrity verification states after correction/erasure."""
 
-    def test_verified_for_unmodified_record(self, client):
+    def test_local_match_for_unmodified_record(self, client):
         token = register_and_login(client)
         record_id = create_record(client, token)
 
         resp = client.get(f"/api/v1/integrity/record/{record_id}", headers=auth(token))
         assert resp.status_code == 200
-        assert resp.get_json()["verification"]["status"] == "VERIFIED"
+        assert resp.get_json()["verification"]["status"] == "LOCAL_MATCH"
 
-    def test_verified_modified_after_correction(self, client):
+    def test_local_match_after_correction(self, client):
         token = register_and_login(client)
         record_id = create_record(client, token)
 
         # Correct the record
-        client.post(f"/api/v1/patients/me/records/{record_id}/correct", json={
+        change = client.post(f"/api/v1/patients/me/records/{record_id}/correct", json={
             "corrections": {"title": "Corrected"},
             "reason": "Test correction",
         }, headers=auth(token))
+        assert change.status_code == 200
 
         resp = client.get(f"/api/v1/integrity/record/{record_id}", headers=auth(token))
         status = resp.get_json()["verification"]["status"]
-        # After correction with new anchor, should be VERIFIED (new anchor matches)
-        assert status == "VERIFIED"
+        assert status == "LOCAL_MATCH"
 
-    def test_verified_redacted_after_erasure(self, client):
+    def test_local_match_after_erasure(self, client, app):
         token = register_and_login(client)
         record_id = create_record(client, token)
 
-        client.post(f"/api/v1/patients/me/records/{record_id}/erase", json={
+        grant_physical_presence(app, client)
+        change = client.post(f"/api/v1/patients/me/records/{record_id}/erase", json={
             "fields_to_erase": ["title", "description"],
             "reason": "Erasure test",
         }, headers=auth(token))
+        assert change.status_code == 200
 
         resp = client.get(f"/api/v1/integrity/record/{record_id}", headers=auth(token))
         status = resp.get_json()["verification"]["status"]
-        # After erasure with new anchor, should be VERIFIED (new anchor matches redacted state)
-        assert status == "VERIFIED"
+        assert status == "LOCAL_MATCH"
 
 
 # ─────────────────────────────────────────────────────────────────────

@@ -158,6 +158,9 @@ function TimelineItem({ event }: { event: AuditEvent }) {
           <Badge variant={severityVariant}>{event.severity}</Badge>
         </div>
         <p className="mt-1 text-sm text-neutral-600">{event.reason}</p>
+        {Array.isArray(event.details?.data_categories) && (
+          <p className="mt-1 text-sm">Data shared: {event.details.data_categories.map(humanize).join(", ") || "No clinical data returned"}</p>
+        )}
         <div className="mt-2 flex items-center gap-3 text-xs text-neutral-400">
           <span>{humanize(event.actor_role)}</span>
           <span>·</span>

@@ -303,13 +303,6 @@ def update_my_record(record_id):
 # HOSPITAL REGISTRATION STAFF — REGISTER A NEW PATIENT
 # ─────────────────────────────────────────────────────────────────────
 
-# Roles that registration_staff is allowed to create. Admin can create ANY role;
-# registration_staff can create any role EXCEPT privileged ones (admin/dpo) to
-# prevent self-escalation (a staff account minting an admin and taking over).
-_STAFF_ASSIGNABLE_ROLES = ("patient", "doctor", "registration_staff")
-_PRIVILEGED_ROLES = ("admin", "dpo")
-
-
 @patients_bp.route("/register", methods=["POST"])
 @jwt_required
 @roles_required("admin", "registration_staff")
@@ -318,7 +311,7 @@ def register_patient():
     Register a NEW user account. Used by Hospital Registration Staff and Admin.
 
     - Admin may create ANY role.
-    - Registration Staff may create any role EXCEPT admin/dpo (no self-escalation).
+    - Registration staff may create patient accounts.
     - When role == "patient", demographic profile fields are stored too (reusing
       the existing encrypted patient profile model).
 
@@ -328,7 +321,7 @@ def register_patient():
     Body:
         {
           "full_name": "...", "email": "...", "password": "...",   # required
-          "role": "patient|doctor|registration_staff|admin|dpo",   # optional, default patient
+          "role": "patient|doctor|registration_staff|admin|dpo|pharmacy_staff",   # optional, default patient
           # patient-only demographics (ignored for non-patient roles):
           "phone_number": "...", "address": "...", "blood_group": "...",
           "allergies": ["..."], "chronic_conditions": ["..."]
@@ -338,24 +331,23 @@ def register_patient():
     full_name = (data.get("full_name") or "").strip()
     email = (data.get("email") or "").strip()
     password = data.get("password") or ""
-    role = (data.get("role") or "patient").strip().lower()
+    role = data.get("role", "patient")
+    if not isinstance(role, str):
+        raise ValidationError("role must be a string")
+    role = role.strip().lower()
     if not full_name or not email or not password:
         raise ValidationError("full_name, email and password are required")
 
     # Role-assignment authorization (backend-enforced; never trust the client).
     actor_role = g.current_user_role
-    if actor_role == "registration_staff" and role in _PRIVILEGED_ROLES:
-        raise AuthorizationError("Registration staff cannot create admin or DPO accounts")
-    if actor_role == "registration_staff" and role not in _STAFF_ASSIGNABLE_ROLES:
-        raise ValidationError(f"role must be one of: {list(_STAFF_ASSIGNABLE_ROLES)}")
+    if actor_role == "registration_staff" and role != "patient":
+        raise AuthorizationError("Only administrators can create staff accounts")
 
     auth_svc = _get_auth_service()
-    # Create the account using the EXISTING registration path. allow_privileged_roles
-    # is safe here: this is an authenticated admin/staff endpoint and the role the
-    # caller may assign is already gated above (staff cannot assign admin/dpo).
     user = auth_svc.register(
         email=email, password=password, role=role, full_name=full_name,
-        allow_privileged_roles=True,
+        allow_privileged_roles=actor_role == "admin",
+        hospital_id=data.get("hospital_id"),
     )
     user_id = user["id"]
 

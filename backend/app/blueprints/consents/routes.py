@@ -9,10 +9,12 @@ from flask import request, jsonify, g
 from app.blueprints.consents import consents_bp
 from app.extensions import get_db
 from app.services.consent_service import ConsentService
+from app.services.provider_directory import provider_directory
 from app.services.patient_service import PatientService
 from app.services.audit_service import AuditService
 from app.middleware.auth_middleware import jwt_required, roles_required
 from app.utils.errors import ValidationError
+from app.utils.constants import PURPOSE_LIMITATION_MATRIX
 
 
 def _get_consent_service():
@@ -47,6 +49,21 @@ def _validate_optional_did(value, field_name: str):
 # ─────────────────────────────────────────────────────────────────────
 # GRANT
 # ─────────────────────────────────────────────────────────────────────
+
+@consents_bp.route("/providers", methods=["GET"])
+@jwt_required
+@roles_required("patient", "admin")
+def providers():
+    return jsonify({"hospitals": provider_directory(get_db())})
+
+
+@consents_bp.route("/scope-options", methods=["GET"])
+@jwt_required
+@roles_required("patient")
+def scope_options():
+    return jsonify({purpose.value: [category.value for category in categories]
+                    for purpose, categories in PURPOSE_LIMITATION_MATRIX.items()})
+
 
 @consents_bp.route("/grant", methods=["POST"])
 @jwt_required
@@ -84,6 +101,8 @@ def grant_consent():
         custom_scope=data.get("custom_scope"),
         patient_did=patient_did,
         doctor_did=doctor_did,
+        recipient=data.get("recipient"),
+        selected_allergies=data.get("selected_allergies"),
     )
 
     # Audit: consent grant
@@ -96,7 +115,7 @@ def grant_consent():
         resource_id=result["consent"]["_id"],
         patient_id=patient_id,
         reason=f"Consent granted: {data.get('consent_type', '')}",
-        details={"consent_type": data.get("consent_type"), "entity": data.get("processing_entity_name")},
+        details={"consent_type": data.get("consent_type"), "entity": result["consent"]["processing_entity_name"]},
         source_ip=request.remote_addr,
     )
 
@@ -131,8 +150,8 @@ def grant_consent():
 
     return jsonify({
         "message": "Consent granted successfully",
-        "consent": result["consent"],
-        "receipt": result["receipt"],
+        "consent": svc.patient_view(result["consent"]),
+        "receipt": svc.patient_view(result["receipt"]),
     }), 201
 
 
@@ -160,7 +179,7 @@ def list_consents():
         consent_type=request.args.get("type"),
     )
 
-    return jsonify({"consents": consents, "count": len(consents)}), 200
+    return jsonify({"consents": [svc.patient_view(d) for d in consents], "count": len(consents)}), 200
 
 
 @consents_bp.route("/<consent_id>", methods=["GET"])
@@ -170,7 +189,7 @@ def get_consent(consent_id):
     """Get a single consent by ID."""
     svc = _get_consent_service()
     consent = svc.get_consent(consent_id, g.current_user_id)
-    return jsonify({"consent": consent}), 200
+    return jsonify({"consent": svc.patient_view(consent)}), 200
 
 
 @consents_bp.route("/active-sharing", methods=["GET"])
@@ -181,7 +200,7 @@ def active_sharing():
     patient_id = _get_patient_id(g.current_user_id)
     svc = _get_consent_service()
     sharing = svc.get_active_sharing(patient_id)
-    return jsonify({"active_sharing": sharing, "count": len(sharing)}), 200
+    return jsonify({"active_sharing": [svc.patient_view(d) for d in sharing], "count": len(sharing)}), 200
 
 
 @consents_bp.route("/expiring-soon", methods=["GET"])
@@ -192,7 +211,7 @@ def expiring_soon():
     patient_id = _get_patient_id(g.current_user_id)
     svc = _get_consent_service()
     expiring = svc.get_expiring_soon(patient_id, days=7)
-    return jsonify({"expiring": expiring, "count": len(expiring)}), 200
+    return jsonify({"expiring": [svc.patient_view(d) for d in expiring], "count": len(expiring)}), 200
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -221,6 +240,7 @@ def modify_consent(consent_id):
         consent_id=consent_id,
         user_id=g.current_user_id,
         new_scope=data.get("new_scope", []),
+        selected_allergies=data.get("selected_allergies"),
         reason=data.get("reason", ""),
     )
 
@@ -241,8 +261,8 @@ def modify_consent(consent_id):
 
     return jsonify({
         "message": "Consent modified successfully",
-        "consent": result["consent"],
-        "receipt": result["receipt"],
+        "consent": svc.patient_view(result["consent"]),
+        "receipt": svc.patient_view(result["receipt"]),
     }), 200
 
 
@@ -308,8 +328,8 @@ def withdraw_consent(consent_id):
 
     return jsonify({
         "message": "Consent withdrawn. Access revoked immediately.",
-        "consent": result["consent"],
-        "receipt": result["receipt"],
+        "consent": svc.patient_view(result["consent"]),
+        "receipt": svc.patient_view(result["receipt"]),
     }), 200
 
 
@@ -325,7 +345,7 @@ def list_receipts():
     patient_id = _get_patient_id(g.current_user_id)
     svc = _get_consent_service()
     receipts = svc.list_receipts(patient_id)
-    return jsonify({"receipts": receipts, "count": len(receipts)}), 200
+    return jsonify({"receipts": [svc.patient_view(d) for d in receipts], "count": len(receipts)}), 200
 
 
 @consents_bp.route("/receipts/<receipt_id>", methods=["GET"])
@@ -335,4 +355,4 @@ def get_receipt(receipt_id):
     """Get a single consent receipt."""
     svc = _get_consent_service()
     receipt = svc.get_receipt(receipt_id, g.current_user_id)
-    return jsonify({"receipt": receipt}), 200
+    return jsonify({"receipt": svc.patient_view(receipt)}), 200

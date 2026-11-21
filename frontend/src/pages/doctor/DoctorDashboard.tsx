@@ -188,10 +188,19 @@ export function DoctorDashboard() {
                   <Badge variant="success">Consent Verified</Badge>
                 </div>
                 <p className="mt-1 text-sm text-neutral-600">
-                  Patient: <strong>{accessResult.patient.full_name}</strong> ·
-                  Blood Group: {accessResult.patient.blood_group || "N/A"} ·
-                  Allergies: {accessResult.patient.allergies.join(", ") || "None"}
+                  Patient: <strong>{results.find((p) => p._id === accessResult.patient._id)?.full_name ?? accessResult.patient._id}</strong>
+                  {" · "}Shared for this chart: {accessResult.consent.chart_scope.map(humanize).join(", ")}
                 </p>
+                {accessResult.consent.chart_scope.includes("allergies") && (
+                  <p className="mt-2 text-sm">
+                    <strong>Allergies shared by the patient:</strong> {Array.isArray(accessResult.patient.allergies)
+                      ? accessResult.patient.allergies.join(", ") || "No current entries shared"
+                      : "Allergy list unavailable"}
+                  </p>
+                )}
+                {accessResult.consent.chart_scope.includes("medical_history") && (
+                  <p className="mt-1 text-sm"><strong>Blood group:</strong> {accessResult.patient.blood_group || "Not recorded"}</p>
+                )}
                 <p className="mt-1 text-xs text-neutral-400">
                   Consent granted: {formatDateTime(accessResult.consent.granted_at)} ·
                   Expires: {formatDateTime(accessResult.consent.expires_at)}
@@ -201,7 +210,7 @@ export function DoctorDashboard() {
           </Card>
 
           {/* Records */}
-          <Card>
+          {accessResult.consent.chart_scope.includes("medical_history") && <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <FileText className="h-4 w-4 text-primary-600" />
@@ -238,7 +247,7 @@ export function DoctorDashboard() {
                 ))}
               </div>
             </CardContent>
-          </Card>
+          </Card>}
         </motion.div>
       )}
     </div>

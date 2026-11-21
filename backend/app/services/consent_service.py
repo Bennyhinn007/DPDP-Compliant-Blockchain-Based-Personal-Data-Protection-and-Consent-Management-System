@@ -20,9 +20,15 @@ Consent Types (DPDP Act Section 5-6):
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
-from app.utils.helpers import generate_uuid, utc_now
+from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
+
+from app.services.encryption_service import get_encryption_service
+from app.services.provider_directory import resolve_recipient
+
+from app.utils.helpers import generate_uuid, utc_now, utc_now_datetime
 from app.utils.errors import NotFoundError, ValidationError, AuthorizationError
-from app.utils.constants import ConsentType, ConsentStatus, PURPOSE_LIMITATION_MATRIX, DataCategory
+from app.utils.constants import ConsentType, ConsentStatus, PURPOSE_LIMITATION_MATRIX
 
 
 VALID_CONSENT_TYPES = [ct.value for ct in ConsentType]
@@ -51,6 +57,8 @@ class ConsentService:
         custom_scope: list[str] = None,
         patient_did: str = None,
         doctor_did: str = None,
+        recipient: dict = None,
+        selected_allergies: list[str] = None,
     ) -> dict:
         """
         Grant consent for a specific processing purpose.
@@ -73,29 +81,25 @@ class ConsentService:
         Raises:
             ValidationError: Invalid inputs or duplicate active consent
         """
+        recipient_key = None
+        if consent_type == "healthcare_treatment" or recipient is not None:
+            recipient_key, processing_entity_name = resolve_recipient(self.db, recipient)
         self._validate_grant(consent_type, processing_entity_name, expiry_days)
 
         # Check for existing active consent of same type
-        existing = self.consents.find_one({
-            "patient_id": patient_id,
-            "consent_type": consent_type,
-            "status": ConsentStatus.ACTIVE.value,
-        })
+        existing = self.get_active_consent(patient_id, consent_type, recipient_key)
         if existing:
             raise ValidationError(
-                f"Active consent already exists for {consent_type}. "
+                f"Active consent already exists for {consent_type} and this recipient. "
                 "Withdraw or modify the existing consent first."
             )
 
-        # Determine data categories in scope
-        if custom_scope:
-            data_categories = custom_scope
-        else:
-            purpose_enum = ConsentType(consent_type)
-            data_categories = [dc.value for dc in PURPOSE_LIMITATION_MATRIX.get(purpose_enum, [])]
+        allowed = [category.value for category in PURPOSE_LIMITATION_MATRIX[ConsentType(consent_type)]]
+        data_categories = allowed if custom_scope is None else self._validated_scope(consent_type, custom_scope)
 
-        now = utc_now()
-        expires_at = (datetime.now(timezone.utc) + timedelta(days=expiry_days)).isoformat()
+        granted_at = utc_now_datetime()
+        now = granted_at.isoformat()
+        expires_at = (granted_at + timedelta(days=expiry_days)).isoformat()
 
         consent_id = generate_uuid()
         consent_doc = {
@@ -106,7 +110,8 @@ class ConsentService:
             "status": ConsentStatus.ACTIVE.value,
             "purpose_description": self._get_purpose_description(consent_type),
             "data_categories_in_scope": data_categories,
-            "processing_entity_id": None,
+            "processing_entity_id": recipient_key,
+            "allergy_selection": self._allergy_selection(patient_id, data_categories, selected_allergies),
             "processing_entity_name": processing_entity_name,
             "granted_at": now,
             "expires_at": expires_at,
@@ -129,7 +134,10 @@ class ConsentService:
             "updated_by": user_id,
         }
 
-        self.consents.insert_one(consent_doc)
+        try:
+            self.consents.insert_one(consent_doc)
+        except DuplicateKeyError:
+            raise ValidationError("Active consent already exists for this purpose and recipient.")
 
         # Generate receipt
         receipt = self._generate_receipt(consent_doc, "grant")
@@ -157,6 +165,7 @@ class ConsentService:
         Returns:
             List of consent documents
         """
+        self.check_and_expire_consents(patient_id)
         query = {"patient_id": patient_id}
         if status:
             query["status"] = status
@@ -187,9 +196,10 @@ class ConsentService:
         if consent["user_id"] != user_id:
             raise AuthorizationError("You can only access your own consents")
 
+        self._expire_if_due(consent, utc_now_datetime())
         return consent
 
-    def get_active_consent(self, patient_id: str, consent_type: str) -> Optional[dict]:
+    def get_active_consent(self, patient_id: str, consent_type: str, recipient_key: str) -> Optional[dict]:
         """
         Check if patient has active consent of a specific type.
 
@@ -198,11 +208,23 @@ class ConsentService:
         Returns:
             Active consent document or None
         """
-        return self.consents.find_one({
+        for consent in self.consents.find({
             "patient_id": patient_id,
+            "processing_entity_id": recipient_key,
             "consent_type": consent_type,
             "status": ConsentStatus.ACTIVE.value,
-        })
+        }):
+            self._expire_if_due(consent, utc_now_datetime())
+            if consent["status"] == ConsentStatus.ACTIVE.value:
+                return consent
+        return None
+
+    def latest_inactive_consent(self, patient_id: str, consent_type: str, recipient_keys: list) -> Optional[dict]:
+        return self.consents.find_one(
+            {"patient_id": patient_id, "consent_type": consent_type,
+             "processing_entity_id": {"$in": recipient_keys}, "status": {"$in": [ConsentStatus.EXPIRED.value, ConsentStatus.WITHDRAWN.value]}},
+            sort=[("granted_at", -1)],
+        )
 
     # ─────────────────────────────────────────────────────────────────
     # MODIFY
@@ -214,6 +236,7 @@ class ConsentService:
         user_id: str,
         new_scope: list[str],
         reason: str,
+        selected_allergies: list[str] = None,
     ) -> dict:
         """
         Modify consent scope (data categories).
@@ -232,39 +255,36 @@ class ConsentService:
             AuthorizationError: Not owner
             ValidationError: Invalid scope or not active
         """
-        consent = self.consents.find_one({"_id": consent_id})
-        if not consent:
-            raise NotFoundError("Consent not found")
-
-        if consent["user_id"] != user_id:
-            raise AuthorizationError("You can only modify your own consents")
-
+        consent = self.get_consent(consent_id, user_id)
         if consent["status"] != ConsentStatus.ACTIVE.value:
             raise ValidationError("Can only modify active consents")
 
-        if not new_scope or not isinstance(new_scope, list):
-            raise ValidationError("New scope must be a non-empty list of data categories")
+        new_scope = self._validated_scope(consent["consent_type"], new_scope)
 
         if not reason or len(reason.strip()) < 5:
             raise ValidationError("Modification reason required (min 5 characters)")
 
         now = utc_now()
-        previous_scope = consent["data_categories_in_scope"]
+        previous_scope = consent.get("data_categories_in_scope")
 
-        self.consents.update_one(
-            {"_id": consent_id},
+        updated = self.consents.find_one_and_update(
+            {"_id": consent_id, "status": ConsentStatus.ACTIVE.value, "version": consent.get("version")},
             {"$set": {
                 "data_categories_in_scope": new_scope,
+                "allergy_selection": self._allergy_selection(consent["patient_id"], new_scope, selected_allergies),
                 "previous_scope": previous_scope,
                 "modification_reason": reason,
                 "modified_at": now,
                 "updated_at": now,
                 "updated_by": user_id,
                 "version": consent.get("version", 1) + 1,
-            }}
+            }},
+            return_document=ReturnDocument.AFTER,
         )
 
-        updated = self.consents.find_one({"_id": consent_id})
+        if updated is None:
+            raise ValidationError("Consent has changed. Refresh and try again.")
+
         receipt = self._generate_receipt(updated, "modify")
 
         return {"consent": updated, "receipt": receipt}
@@ -298,20 +318,14 @@ class ConsentService:
             AuthorizationError: Not owner
             ValidationError: Consent not active
         """
-        consent = self.consents.find_one({"_id": consent_id})
-        if not consent:
-            raise NotFoundError("Consent not found")
-
-        if consent["user_id"] != user_id:
-            raise AuthorizationError("You can only withdraw your own consents")
-
+        consent = self.get_consent(consent_id, user_id)
         if consent["status"] != ConsentStatus.ACTIVE.value:
             raise ValidationError("Can only withdraw active consents")
 
         now = utc_now()
 
-        self.consents.update_one(
-            {"_id": consent_id},
+        update = self.consents.update_one(
+            {"_id": consent_id, "status": ConsentStatus.ACTIVE.value, "version": consent.get("version")},
             {"$set": {
                 "status": ConsentStatus.WITHDRAWN.value,
                 "withdrawn_at": now,
@@ -322,6 +336,9 @@ class ConsentService:
             }}
         )
 
+        if not update.matched_count:
+            raise ValidationError("Consent has changed. Refresh and try again.")
+
         updated = self.consents.find_one({"_id": consent_id})
         receipt = self._generate_receipt(updated, "withdraw")
 
@@ -331,26 +348,46 @@ class ConsentService:
     # EXPIRY
     # ─────────────────────────────────────────────────────────────────
 
-    def check_and_expire_consents(self) -> int:
-        """
-        Check all active consents and expire those past their expiry date.
+    @staticmethod
+    def _expiry_utc(value) -> Optional[datetime]:
+        """Read ISO timestamps and UTC datetimes returned by PyMongo."""
+        if isinstance(value, str):
+            try:
+                value = datetime.fromisoformat(value)
+            except ValueError:
+                return None
+        if not isinstance(value, datetime):
+            return None
+        return value.astimezone(timezone.utc) if value.tzinfo else value.replace(tzinfo=timezone.utc)
 
-        Returns:
-            Number of consents expired
-        """
-        now = datetime.now(timezone.utc).isoformat()
+    def _expire_if_due(self, consent: dict, now: datetime) -> bool:
+        if consent["status"] != ConsentStatus.ACTIVE.value:
+            return False
+        deadline = self._expiry_utc(consent.get("expires_at"))
+        if deadline is not None and now < deadline:
+            return False
 
-        result = self.consents.update_many(
-            {
-                "status": ConsentStatus.ACTIVE.value,
-                "expires_at": {"$lte": now},
-            },
-            {"$set": {
-                "status": ConsentStatus.EXPIRED.value,
-                "updated_at": now,
-            }}
+        # Missing or unreadable deadlines cannot authorize access. Only the
+        # first reader transitions the grant; a concurrent withdrawal wins.
+        changes = {"status": ConsentStatus.EXPIRED.value, "updated_at": now.isoformat()}
+        result = self.consents.update_one(
+            {"_id": consent["_id"], "status": ConsentStatus.ACTIVE.value},
+            {"$set": changes},
         )
-        return result.modified_count
+        if result.matched_count:
+            consent.update(changes)
+        else:
+            current = self.consents.find_one({"_id": consent["_id"]})
+            consent.update(current or changes)
+        return bool(result.modified_count)
+
+    def check_and_expire_consents(self, patient_id: str = None) -> int:
+        """Persist elapsed grants, optionally scoped to a single patient."""
+        query = {"status": ConsentStatus.ACTIVE.value}
+        if patient_id is not None:
+            query["patient_id"] = patient_id
+        now = utc_now_datetime()
+        return sum(self._expire_if_due(consent, now) for consent in self.consents.find(query))
 
     def get_expiring_soon(self, patient_id: str, days: int = 7) -> list:
         """
@@ -363,14 +400,14 @@ class ConsentService:
         Returns:
             List of consents expiring soon
         """
-        now = datetime.now(timezone.utc)
-        threshold = (now + timedelta(days=days)).isoformat()
-
-        return list(self.consents.find({
-            "patient_id": patient_id,
-            "status": ConsentStatus.ACTIVE.value,
-            "expires_at": {"$lte": threshold},
-        }))
+        now = utc_now_datetime()
+        threshold = now + timedelta(days=days)
+        expiring = []
+        for consent in self.get_active_sharing(patient_id):
+            deadline = self._expiry_utc(consent.get("expires_at"))
+            if deadline is not None and now < deadline <= threshold:
+                expiring.append(consent)
+        return expiring
 
     # ─────────────────────────────────────────────────────────────────
     # RECEIPTS
@@ -400,6 +437,7 @@ class ConsentService:
         Returns:
             List of active consents showing who has access and to what.
         """
+        self.check_and_expire_consents(patient_id)
         return list(self.consents.find({
             "patient_id": patient_id,
             "status": ConsentStatus.ACTIVE.value,
@@ -408,6 +446,39 @@ class ConsentService:
     # ─────────────────────────────────────────────────────────────────
     # INTERNAL HELPERS
     # ─────────────────────────────────────────────────────────────────
+
+    def _allergy_selection(self, patient_id, scope, selected):
+        if selected is None:
+            selected = []
+        if not isinstance(selected, list) or any(not isinstance(a, str) or not a.strip() for a in selected):
+            raise ValidationError("Select allergies from your saved profile.")
+        if selected:
+            patient = self.patients.find_one({"_id": patient_id}, {"allergies": 1})
+            saved = get_encryption_service().decrypt_field((patient or {}).get("allergies"))
+            if "allergies" not in scope or not isinstance(saved, list) or any(a not in saved for a in selected):
+                raise ValidationError("Only saved allergies within the selected scope can be shared.")
+        return get_encryption_service().encrypt_field(list(dict.fromkeys(selected)))
+
+    @staticmethod
+    def selected_allergies(consent):
+        values = get_encryption_service().decrypt_field(consent.get("allergy_selection"))
+        return [a for a in values if isinstance(a, str)] if isinstance(values, list) else []
+
+    @classmethod
+    def patient_view(cls, document):
+        result = dict(document)
+        result["selected_allergies"] = cls.selected_allergies(document)
+        result.pop("allergy_selection", None)
+        return result
+
+    @staticmethod
+    def _validated_scope(consent_type: str, scope: list) -> list[str]:
+        allowed = PURPOSE_LIMITATION_MATRIX[ConsentType(consent_type)]
+        if not isinstance(scope, list) or (allowed and not scope):
+            raise ValidationError("Select at least one permitted data category.")
+        if any(not isinstance(category, str) or category not in allowed for category in scope):
+            raise ValidationError("The selected data categories are outside this consent purpose.")
+        return list(dict.fromkeys(scope))
 
     def _validate_grant(self, consent_type: str, entity_name: str, expiry_days: int) -> None:
         """Validate consent grant inputs."""
@@ -443,6 +514,8 @@ class ConsentService:
             "scope_after": consent["data_categories_in_scope"] if action_type == "modify" else None,
             "expiry_date": consent["expires_at"],
             "processing_entity_name": consent["processing_entity_name"],
+            "processing_entity_id": consent.get("processing_entity_id"),
+            "allergy_selection": consent.get("allergy_selection"),
             "blockchain_tx_ref": None,
             "blockchain_anchor_id": None,
             "receipt_hash": None,

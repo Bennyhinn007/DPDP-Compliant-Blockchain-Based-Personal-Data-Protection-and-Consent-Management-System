@@ -19,6 +19,7 @@ No running chain required — asserts fail-closed / graceful behavior.
 import pytest
 from datetime import datetime, timezone, timedelta
 
+from tests.accounts import create_test_account
 from app import create_app
 from app.extensions import get_db
 from app.config import get_config
@@ -36,9 +37,9 @@ def client(app):
 
 
 def _token(client, email, role):
-    client.post("/api/v1/auth/register", json={
-        "email": email, "password": "TestPass123", "role": role, "full_name": f"{role} user",
-    })
+    create_test_account(
+        client, email=email, password="TestPass123", role=role, full_name=f"{role} user",
+    )
     resp = client.post("/api/v1/auth/login", json={"email": email, "password": "TestPass123"})
     return resp.get_json()["access_token"], resp.get_json()["user"]["id"]
 
@@ -171,7 +172,7 @@ class TestConsentDidBridge:
         auth = self._patient_auth(client, "p4_c_nodid@example.com")
         resp = client.post("/api/v1/consents/grant", json={
             "consent_type": "healthcare_treatment",
-            "processing_entity_name": "Apollo",
+            "recipient": {"kind": "hospital", "hospital_id": "citycare"},
         }, headers=auth)
         assert resp.status_code == 201
         consent = resp.get_json()["consent"]
@@ -182,7 +183,7 @@ class TestConsentDidBridge:
         auth = self._patient_auth(client, "p4_c_did@example.com")
         resp = client.post("/api/v1/consents/grant", json={
             "consent_type": "healthcare_treatment",
-            "processing_entity_name": "Apollo",
+            "recipient": {"kind": "hospital", "hospital_id": "citycare"},
             "patient_did": "did:rakshaid:abc123",
             "doctor_did": "did:rakshaid:doc456",
         }, headers=auth)
@@ -195,7 +196,7 @@ class TestConsentDidBridge:
         auth = self._patient_auth(client, "p4_c_bad@example.com")
         resp = client.post("/api/v1/consents/grant", json={
             "consent_type": "healthcare_treatment",
-            "processing_entity_name": "Apollo",
+            "recipient": {"kind": "hospital", "hospital_id": "citycare"},
             "patient_did": "not-a-did",
         }, headers=auth)
         assert resp.status_code == 422

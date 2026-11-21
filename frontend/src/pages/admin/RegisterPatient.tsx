@@ -8,6 +8,8 @@
  */
 
 import { useState, type FormEvent } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { consentService } from "@/services/consentService";
 import { UserPlus, CheckCircle2, Hospital, AlertCircle } from "lucide-react";
 import { adminService, type RegisteredPatient } from "@/services/adminService";
 import { getErrorMessage } from "@/services/api";
@@ -22,15 +24,17 @@ import { PROVIDER_ORG_NAME, humanize } from "@/lib/utils";
 
 const BLOOD_GROUPS = ["", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 
-// Roles each actor may create. Admin: any. Registration staff: no admin/dpo.
+// The API enforces the same account creation rules.
 const ADMIN_ASSIGNABLE = ["patient", "doctor", "registration_staff", "admin", "dpo"];
-const STAFF_ASSIGNABLE = ["patient", "doctor", "registration_staff"];
+const STAFF_ASSIGNABLE = ["patient"];
 
 export function RegisterPatient() {
   const { user } = useAuth();
   const assignableRoles = user?.role === "admin" ? ADMIN_ASSIGNABLE : STAFF_ASSIGNABLE;
 
   const [role, setRole] = useState("patient");
+  const [hospital, setHospital] = useState("");
+  const providers = useQuery({ queryKey: ["providers"], queryFn: consentService.providers, enabled: role === "doctor" });
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -47,7 +51,7 @@ export function RegisterPatient() {
   const isPatient = role === "patient";
 
   const reset = () => {
-    setFullName(""); setEmail(""); setPassword(""); setPhone("");
+    setHospital(""); setFullName(""); setEmail(""); setPassword(""); setPhone("");
     setAddress(""); setBloodGroup(""); setAllergies(""); setChronic("");
   };
 
@@ -65,6 +69,7 @@ export function RegisterPatient() {
         email: email.trim(),
         password,
         role,
+        hospital_id: role === "doctor" && hospital ? hospital : undefined,
         // demographics only meaningful for patients
         phone_number: isPatient && phone.trim() ? phone.trim() : undefined,
         address: isPatient && address.trim() ? address.trim() : undefined,
@@ -84,8 +89,8 @@ export function RegisterPatient() {
   return (
     <div className="space-y-6">
       <PageHero
-        title="Register New User"
-        subtitle={`${PROVIDER_ORG_NAME} — Hospital Registration Desk · create patient, doctor & staff accounts`}
+        title={user?.role === "admin" ? "Register a user" : "Register a patient"}
+        subtitle={`${PROVIDER_ORG_NAME} · Hospital registration desk`}
         icon={Hospital}
       />
 
@@ -129,6 +134,15 @@ export function RegisterPatient() {
                   <Label htmlFor="password">Initial Password *</Label>
                   <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min 8 characters" required />
                 </div>
+                {role === "doctor" && <div className="space-y-1.5">
+                  <Label htmlFor="doctor-hospital">Hospital affiliation</Label>
+                  <select id="doctor-hospital" value={hospital} onChange={e => setHospital(e.target.value)}
+                    className="h-10 w-full rounded-md border border-neutral-300 bg-white px-3 text-sm">
+                    <option value="">No listed hospital</option>
+                    {providers.data?.filter(h => h.hospital_grant).map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+                  </select>
+                  {providers.isError && <button type="button" className="underline" onClick={() => providers.refetch()}>Retry loading hospitals</button>}
+                </div>}
                 {isPatient && (
                   <>
                     <div className="space-y-1.5">
@@ -189,18 +203,15 @@ export function RegisterPatient() {
                   <Row label="Login" value={created.email} />
                   <Row label="Status" value={created.status} />
                 </dl>
-                <div className="rounded-md bg-neutral-50 px-3 py-2 text-xs text-neutral-500">
-                  Share the login email with the patient. The password is set once
-                  during registration and is never shown again (stored hashed).
-                </div>
-                <p className="text-xs text-neutral-500">
-                  Next: a doctor opens the Provider Portal, searches this patient,
-                  and creates clinical records.
-                </p>
+                {created.role === "patient" && (
+                  <p className="text-xs text-neutral-500">
+                    A doctor can now find this patient in the provider portal.
+                  </p>
+                )}
               </div>
             ) : (
               <p className="py-8 text-center text-sm text-neutral-400">
-                Fill the form and submit to create a patient account.
+                Account details will appear here after registration.
               </p>
             )}
           </CardContent>

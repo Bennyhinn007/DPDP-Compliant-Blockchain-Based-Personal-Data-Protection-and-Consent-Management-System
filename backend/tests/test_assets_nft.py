@@ -11,6 +11,7 @@ No running chain required — asserts the fail-closed / graceful behavior.
 
 import pytest
 
+from tests.accounts import create_test_account
 from app import create_app
 from app.extensions import get_db
 from app.services.asset_nft_service import AssetNFTService
@@ -27,9 +28,9 @@ def client(app):
 
 
 def _token(client, email, role):
-    client.post("/api/v1/auth/register", json={
-        "email": email, "password": "TestPass123", "role": role, "full_name": f"{role} user",
-    })
+    create_test_account(
+        client, email=email, password="TestPass123", role=role, full_name=f"{role} user",
+    )
     resp = client.post("/api/v1/auth/login", json={"email": email, "password": "TestPass123"})
     return resp.get_json()["access_token"]
 

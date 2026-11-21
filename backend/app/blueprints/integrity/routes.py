@@ -29,16 +29,7 @@ def integrity_health():
 @jwt_required
 @roles_required("patient", "admin")
 def verify_record(record_id):
-    """
-    Verify a single healthcare record against its blockchain anchor.
-
-    States:
-    - VERIFIED: Hash matches blockchain, no modification
-    - VERIFIED_MODIFIED: Hash changed but chameleon proof exists (authorized correction)
-    - VERIFIED_REDACTED: Record redacted with valid chameleon proof
-    - INTEGRITY_VIOLATION: Hash mismatch with no valid proof
-    - NO_ANCHOR: No blockchain anchor exists
-    """
+    """Verify the current record version against local and on-chain evidence."""
     db = get_db()
     records = db["healthcare_records"]
 
@@ -55,25 +46,6 @@ def verify_record(record_id):
 
     bc = _get_bc_service()
     result = bc.verify_record("healthcare_records", record_id, record)
-
-    # Enhance with chameleon hash state
-    if result["status"] == "INTEGRITY_VIOLATION":
-        # Check for chameleon hash proofs
-        chameleon_records = list(
-            db["chameleon_hash_records"].find({"resource_id": record_id}).sort("created_at", -1)
-        )
-        if chameleon_records:
-            latest = chameleon_records[0]
-            if latest.get("status") == "executed":
-                if latest.get("redaction_type") == "erasure":
-                    result["status"] = "VERIFIED_REDACTED"
-                    result["message"] = "Record was lawfully erased. Chameleon hash proof exists."
-                else:
-                    result["status"] = "VERIFIED_MODIFIED"
-                    result["message"] = "Record was lawfully corrected. Chameleon hash proof exists."
-                result["chameleon_proof"] = latest.get("redaction_proof_hash")
-                result["modification_type"] = latest.get("redaction_type")
-                result["legal_basis"] = latest.get("legal_basis")
 
     return jsonify({"verification": result}), 200
 

@@ -9,6 +9,7 @@ from datetime import datetime, timezone, timedelta
 import pyotp
 import pytest
 
+from tests.accounts import create_test_account
 from app import create_app
 from app.config import BaseConfig
 from app.extensions import get_db
@@ -33,9 +34,9 @@ def client(app):
 
 def _make_admin(client, email, role="admin"):
     """Register and log in (a fresh account without MFA/fingerprint gets tokens)."""
-    client.post("/api/v1/auth/register", json={
-        "email": email, "password": PW, "role": role, "full_name": f"{role} user",
-    })
+    create_test_account(
+        client, email=email, password=PW, role=role, full_name=f"{role} user",
+    )
     body = client.post("/api/v1/auth/login", json={"email": email, "password": PW}).get_json()
     return {"Authorization": f"Bearer {body['access_token']}"}, body["user"]["id"]
 

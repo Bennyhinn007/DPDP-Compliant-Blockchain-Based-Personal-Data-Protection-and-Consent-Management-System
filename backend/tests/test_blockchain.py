@@ -13,6 +13,8 @@ If Ganache is not available, anchors are stored with transaction_status="failed"
 but the verification logic still works against the stored hash.
 """
 
+from unittest.mock import MagicMock
+
 import pytest
 from app import create_app
 from app.extensions import get_db, get_web3
@@ -154,7 +156,7 @@ class TestAnchorCreation:
 class TestVerification:
     """Test integrity verification logic."""
 
-    def test_verified_when_hash_matches(self, app):
+    def test_local_match_when_chain_is_offline(self, app):
         with app.app_context():
             db = get_db()
             bc = BlockchainService(db, get_web3())
@@ -167,8 +169,32 @@ class TestVerification:
 
             # Verify — should match
             result = bc.verify_record("healthcare_records", "r1", record)
-            assert result["status"] == "VERIFIED"
-            assert result["current_hash"] == result["blockchain_hash"]
+            assert result["status"] == "LOCAL_MATCH"
+            assert result["current_hash"] == result["stored_hash"]
+
+    @pytest.mark.parametrize(("receipt_status", "use_record_payload", "expected"), [
+        (1, True, "VERIFIED"),
+        (0, True, "LOCAL_MATCH"),
+        (1, False, "INTEGRITY_VIOLATION"),
+    ])
+    def test_checks_mined_payload(self, app, receipt_status, use_record_payload, expected):
+        with app.app_context():
+            db = get_db()
+            record = {"_id": "r1", "title": "encrypted"}
+            digest = BlockchainService.compute_record_hash(record)
+            db.blockchain_anchors.insert_one({
+                "resource_id": "r1", "resource_type": "healthcare_records",
+                "data_hash": digest, "transaction_hash": "0x" + "12" * 32,
+                "created_at": "2026-01-01", "network": "ganache",
+            })
+            node = MagicMock()
+            node.eth.chain_id = app.config["GANACHE_CHAIN_ID"]
+            node.eth.get_transaction_receipt.return_value = {"status": receipt_status, "blockNumber": 7}
+            payload_id = "r1" if use_record_payload else "other-record"
+            node.eth.get_transaction.return_value = {"input": f"{payload_id}|{digest}".encode()}
+            result = BlockchainService(db, node).verify_record("healthcare_records", "r1", record)
+            assert result["status"] == expected
+            assert ("blockchain_hash" in result) == (expected == "VERIFIED")
 
     def test_violation_when_hash_differs(self, app):
         with app.app_context():
@@ -183,7 +209,7 @@ class TestVerification:
             tampered = {"_id": "r1", "title": "tampered", "version": 1}
             result = bc.verify_record("healthcare_records", "r1", tampered)
             assert result["status"] == "INTEGRITY_VIOLATION"
-            assert result["current_hash"] != result["blockchain_hash"]
+            assert result["current_hash"] != result["stored_hash"]
 
     def test_no_anchor_when_never_anchored(self, app):
         with app.app_context():
@@ -266,7 +292,7 @@ class TestRecordIntegration:
 class TestVerificationAPI:
     """Test the integrity verification API endpoint."""
 
-    def test_verify_endpoint_returns_verified(self, client, app):
+    def test_verify_endpoint_reports_local_evidence_when_offline(self, client, app):
         token = register_and_login(client)
 
         # Create a record (auto-anchored)
@@ -281,8 +307,8 @@ class TestVerificationAPI:
         resp = client.get(f"/api/v1/integrity/record/{record_id}", headers=auth(token))
         assert resp.status_code == 200
         verification = resp.get_json()["verification"]
-        assert verification["status"] == "VERIFIED"
-        assert verification["current_hash"] == verification["blockchain_hash"]
+        assert verification["status"] == "LOCAL_MATCH"
+        assert verification["current_hash"] == verification["stored_hash"]
 
     def test_verify_nonexistent_record_404(self, client):
         token = register_and_login(client)

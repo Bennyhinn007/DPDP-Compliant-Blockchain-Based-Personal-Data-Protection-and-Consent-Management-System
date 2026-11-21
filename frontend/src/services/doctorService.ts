@@ -12,8 +12,8 @@ export interface PatientSearchResult {
 }
 
 export interface PatientAccessResult {
-  patient: { _id: string; full_name: string; blood_group: string; allergies: string[] };
-  consent: { _id: string; consent_type: string; granted_at: string; expires_at: string };
+  patient: { _id: string; blood_group?: string | null; allergies?: string[] | string | null };
+  consent: { _id: string; consent_type: string; granted_at: string; expires_at: string; chart_scope: string[] };
   records: Array<{
     _id: string; title: string; record_type: string; description: string;
     diagnosis_codes: string[]; symptoms: string[]; treatment_notes: string;

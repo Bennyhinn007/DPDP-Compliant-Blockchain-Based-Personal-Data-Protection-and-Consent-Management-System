@@ -12,6 +12,14 @@ from app.config import get_config
 import os
 
 
+def ensure_recipient_index(db):
+    db.consents.create_index(
+        [("patient_id", ASCENDING), ("consent_type", ASCENDING), ("processing_entity_id", ASCENDING)],
+        unique=True, name="unique_active_recipient",
+        partialFilterExpression={"status": "active", "processing_entity_id": {"$type": "string"}},
+    )
+
+
 def initialize_database(db):
     """
     Create all collections and indexes for the MVP.
@@ -84,6 +92,7 @@ def initialize_database(db):
     if "consents" not in db.list_collection_names():
         db.create_collection("consents")
     consents = db["consents"]
+    ensure_recipient_index(db)
     consents.create_index([("patient_id", ASCENDING), ("consent_type", ASCENDING)], name="idx_patient_type")
     consents.create_index([("user_id", ASCENDING), ("status", ASCENDING)], name="idx_user_status")
     consents.create_index([("status", ASCENDING), ("expires_at", ASCENDING)], name="idx_expiry")

@@ -12,8 +12,11 @@ Tests cover:
 """
 
 import pytest
+from datetime import datetime, timedelta, timezone
 from app import create_app
 from app.extensions import get_db
+from app.services import consent_service
+from tests.accounts import create_test_account
 
 
 @pytest.fixture
@@ -63,6 +66,7 @@ def grant(client, token, consent_type="healthcare_treatment", entity="Apollo Hea
     return client.post("/api/v1/consents/grant", json={
         "consent_type": consent_type,
         "processing_entity_name": entity,
+        "recipient": {"kind": "hospital", "hospital_id": "citycare"},
         "expiry_days": 365,
     }, headers=auth(token))
 
@@ -77,7 +81,7 @@ class TestGrantConsent:
         data = resp.get_json()
         assert data["consent"]["consent_type"] == "healthcare_treatment"
         assert data["consent"]["status"] == "active"
-        assert data["consent"]["processing_entity_name"] == "Apollo Healthcare"
+        assert data["consent"]["processing_entity_name"] == "CityCare Hospital"
         assert "medical_history" in data["consent"]["data_categories_in_scope"]
         assert data["receipt"]["action_type"] == "grant"
 
@@ -137,7 +141,7 @@ class TestGrantConsent:
         token = register_and_login(client)
         resp = client.post("/api/v1/consents/grant", json={
             "consent_type": "healthcare_treatment",
-            "processing_entity_name": "Custom Entity",
+            "recipient": {"kind": "hospital", "hospital_id": "citycare"},
             "expiry_days": 180,
             "custom_scope": ["allergies"],
         }, headers=auth(token))
@@ -350,3 +354,149 @@ class TestActiveSharing:
         assert resp.status_code == 200
         assert resp.get_json()["count"] == 1
         assert resp.get_json()["active_sharing"][0]["consent_type"] == "healthcare_treatment"
+
+
+def test_chart_access_at_exact_consent_deadline(client, monkeypatch):
+    patient = register_and_login(client)
+    create_test_account(client, role="doctor", full_name="Test Doctor",
+                        email="doctor@example.invalid", password="ExamplePass123")
+    get_db().users.update_one({"role": "doctor"}, {"$set": {"hospital_id": "citycare"}})
+    doctor = client.post("/api/v1/auth/login", json={
+        "email": "doctor@example.invalid", "password": "ExamplePass123",
+    }).json["access_token"]
+    consent = grant(client, patient).json["consent"]
+    deadline = datetime.fromisoformat(consent["expires_at"])
+    chart = f"/api/v1/doctors/patients/{consent['patient_id']}/records"
+    record = client.post("/api/v1/patients/me/records", headers=auth(patient), json={
+        "record_type": "consultation", "title": "Synthetic chart", "description": "Routine test consultation.",
+    })
+    assert record.status_code == 201
+
+    monkeypatch.setattr(consent_service, "utc_now_datetime", lambda: deadline - timedelta(seconds=1))
+    assert client.get(chart, headers=auth(doctor)).json["records"][0]["_id"] == record.json["record"]["_id"]
+    monkeypatch.setattr(consent_service, "utc_now_datetime", lambda: deadline)
+    denied = client.get(chart, headers=auth(doctor))
+    assert denied.status_code == 403
+    assert denied.json["reason"] == "CONSENT_EXPIRED"
+    assert "records" not in denied.json
+    timeline = client.get("/api/v1/audit/timeline", headers=auth(patient)).json["timeline"]
+    attempts = [e for e in timeline if e["actor_role"] == "doctor" and e["action_type"] == "read"]
+    assert [e["severity"] for e in attempts] == ["warning", "info"]
+    assert attempts[0]["details"]["consent_status"] == "expired"
+    assert all(e["details"]["consent_id"] == consent["_id"] for e in attempts)
+    assert client.get("/api/v1/consents/active-sharing", headers=auth(patient)).json["count"] == 0
+    assert client.get("/api/v1/consents/expiring-soon", headers=auth(patient)).json["count"] == 0
+    assert client.get("/api/v1/consents/?status=expired", headers=auth(patient)).json["count"] == 1
+    assert grant(client, patient).status_code == 201
+    assert client.get(chart, headers=auth(doctor)).status_code == 200
+
+
+@pytest.mark.parametrize("stored_deadline", [
+    None, "invalid", "2026-01-01T05:30:00+05:30", datetime(2026, 1, 1),
+])
+def test_old_or_unreadable_deadlines_cannot_authorize(client, monkeypatch, stored_deadline):
+    token = register_and_login(client)
+    consent = grant(client, token).json["consent"]
+    get_db().consents.update_one({"_id": consent["_id"]}, {"$set": {"expires_at": stored_deadline}})
+    monkeypatch.setattr(consent_service, "utc_now_datetime", lambda: datetime(2026, 1, 1, tzinfo=timezone.utc))
+    # An expired grant must permit renewal even when no doctor has opened the chart.
+    assert grant(client, token).status_code == 201
+    assert get_db().consents.find_one({"_id": consent["_id"]})["status"] == "expired"
+
+
+@pytest.mark.parametrize("scope", [[], "allergies", ["contact_info"], [{"category": "allergies"}]])
+def test_grant_and_modify_reject_invalid_treatment_scopes(client, scope):
+    patient = auth(register_and_login(client))
+    body = {"consent_type": "healthcare_treatment", "recipient": {"kind": "hospital", "hospital_id": "citycare"},
+            "custom_scope": scope}
+    assert client.post("/api/v1/consents/grant", headers=patient, json=body).status_code == 422
+    body["custom_scope"] = ["allergies"]
+    granted = client.post("/api/v1/consents/grant", headers=patient, json=body)
+    assert granted.status_code == 201
+    consent_id = granted.json["consent"]["_id"]
+    edit = client.put(f"/api/v1/consents/{consent_id}/modify", headers=patient, json={
+        "new_scope": scope, "reason": "Change shared categories.",
+    })
+    assert edit.status_code == 422
+    assert get_db().consents.find_one({"_id": consent_id})["data_categories_in_scope"] == ["allergies"]
+
+
+@pytest.mark.parametrize("stored_scope", [[], None, "allergies", ["prescriptions"], ["unrecognized"]])
+def test_chart_denied_when_no_supported_category_is_granted(client, stored_scope):
+    patient = register_and_login(client)
+    consent = grant(client, patient).json["consent"]
+    get_db().consents.update_one({"_id": consent["_id"]}, {"$set": {"data_categories_in_scope": stored_scope}})
+    create_test_account(client, email="dr@example.invalid", password="ExamplePass123", role="doctor", full_name="Doctor")
+    get_db().users.update_one({"role": "doctor"}, {"$set": {"hospital_id": "citycare"}})
+    doctor = client.post("/api/v1/auth/login", json={"email": "dr@example.invalid", "password": "ExamplePass123"})
+    response = client.get(f"/api/v1/doctors/patients/{consent['patient_id']}/records",
+                          headers=auth(doctor.json["access_token"]))
+    assert response.status_code == 403
+    assert response.json["reason"] == "CONSENT_SCOPE_RESTRICTED"
+    assert "patient" not in response.json and "records" not in response.json
+    assert get_db().data_access_logs.count_documents({"consent_id": consent["_id"]}) == 0
+
+
+def test_specific_recipient_and_allergy_lifecycle(client):
+    patient = auth(register_and_login(client))
+    profile_url = "/api/v1/patients/me"
+    profile = client.put(profile_url, headers=patient, json={"allergies": ["Latex", "Nickel"]}).json["patient"]
+    chart = f"/api/v1/doctors/patients/{profile['_id']}/records"
+
+    def doctor(name, hospital):
+        credentials = {"email": f"{name}@example.invalid", "password": "ExamplePass123"}
+        account = create_test_account(client, role="doctor", full_name=name, **credentials)
+        get_db().users.update_one({"_id": account["id"]}, {"$set": {"hospital_id": hospital}})
+        login = client.post("/api/v1/auth/login", json=credentials)
+        return account["id"], auth(login.json["access_token"])
+
+    first_id, first = doctor("Zara", "citycare")
+    _, second = doctor("Asha", "citycare")
+    _, outside = doctor("Mira", "riverside")
+    groups = client.get("/api/v1/consents/providers", headers=patient).json["hospitals"]
+    assert [d["name"] for d in groups[0]["doctors"]] == ["Asha", "Zara"]
+
+    direct = {"kind": "doctor", "hospital_id": "citycare", "doctor_id": first_id}
+    hospital = {"kind": "hospital", "hospital_id": "citycare"}
+
+    def share(recipient, allergies):
+        return client.post("/api/v1/consents/grant", headers=patient, json={
+            "recipient": recipient, "consent_type": "healthcare_treatment",
+            "custom_scope": ["allergies"], "selected_allergies": allergies,
+        })
+
+    assert share({**direct, "hospital_id": "riverside"}, ["Latex"]).status_code == 422
+    assert share(direct, ["Unsaved entry"]).status_code == 422
+    grant = share(direct, ["Latex"])
+    assert grant.status_code == 201
+    direct_id = grant.json["consent"]["_id"]
+    assert grant.json["receipt"]["selected_allergies"] == ["Latex"]
+    assert "Latex" not in str(get_db().consents.find_one({"_id": direct_id}))
+    assert "Latex" not in str(get_db().consent_receipts.find_one({"consent_id": direct_id}))
+    assert share(direct, ["Nickel"]).status_code == 422
+    response = client.get(chart, headers=first)
+    assert response.json["patient"] == {"_id": profile["_id"], "allergies": ["Latex"]}
+    assert client.get(chart, headers=second).status_code == 403
+    assert client.get(chart, headers=outside).status_code == 403
+    search = client.get("/api/v1/doctors/patients/search?q=Test", headers=second)
+    assert search.json["patients"][0]["has_treatment_consent"] is False
+
+    broader = share(hospital, ["Nickel"])
+    assert broader.status_code == 201
+    assert client.get(chart, headers=second).json["patient"]["allergies"] == ["Nickel"]
+    assert client.get(chart, headers=first).json["patient"]["allergies"] == ["Latex"]
+    assert client.get(chart, headers=outside).status_code == 403
+    client.put(profile_url, headers=patient, json={"allergies": ["Nickel", "Dust"]})
+    assert client.get(chart, headers=first).json["patient"]["allergies"] == []
+    edit = client.put(f"/api/v1/consents/{direct_id}/modify", headers=patient, json={
+        "new_scope": ["allergies"], "selected_allergies": ["Dust"], "reason": "Update my selection.",
+    })
+    assert edit.json["receipt"]["selected_allergies"] == ["Dust"]
+    assert client.get(chart, headers=first).json["patient"]["allergies"] == ["Dust"]
+    client.post(f"/api/v1/consents/{direct_id}/withdraw", headers=patient)
+    assert client.get(chart, headers=first).json["patient"]["allergies"] == ["Nickel"]
+    hospital_id = broader.json["consent"]["_id"]
+    # Historical grants with only a display name cannot authorize any clinician.
+    get_db().consents.update_one({"_id": hospital_id}, {"$unset": {"processing_entity_id": ""}})
+    assert client.get(chart, headers=first).status_code == 403
+    assert client.get(chart, headers=second).status_code == 403

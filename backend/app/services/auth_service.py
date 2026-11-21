@@ -47,14 +47,14 @@ class AuthService:
     # ─────────────────────────────────────────────────────────────────
 
     def register(self, email: str, password: str, role: str, full_name: str,
-                 allow_privileged_roles: bool = False) -> dict:
+                 allow_privileged_roles: bool = False, hospital_id: str = None) -> dict:
         """
         Register a new user.
 
         Args:
             email: User email (unique)
             password: Plaintext password (min 8 chars)
-            role: User role (patient or admin for MVP)
+            role: Account role. Public signup accepts only patients.
             full_name: Display name
 
         Returns:
@@ -96,6 +96,11 @@ class AuthService:
             "updated_by": user_id,
         }
 
+        if hospital_id is not None:
+            from app.services.provider_directory import HOSPITALS
+            if role != "doctor" or not allow_privileged_roles or not isinstance(hospital_id, str) or hospital_id not in HOSPITALS:
+                raise ValidationError("Select a listed hospital for this doctor.")
+            user_doc["hospital_id"] = hospital_id
         self.users.insert_one(user_doc)
 
         # Auto-create patient profile if registering as patient
@@ -359,17 +364,7 @@ class AuthService:
         if not password or len(password) < 8:
             errors["password"] = "Password must be at least 8 characters"
 
-        # Public self-registration is restricted to non-privileged roles. The
-        # admin-driven staff/admin registration path passes allow_privileged_roles
-        # so an admin can create dpo / pharmacy_staff too.
-        allowed_roles = [
-            UserRole.PATIENT.value,
-            UserRole.ADMIN.value,
-            UserRole.DOCTOR.value,
-            UserRole.REGISTRATION_STAFF.value,
-        ]
-        if allow_privileged_roles:
-            allowed_roles += [UserRole.DPO.value, UserRole.PHARMACY_STAFF.value]
+        allowed_roles = [item.value for item in UserRole] if allow_privileged_roles else [UserRole.PATIENT.value]
         if role not in allowed_roles:
             errors["role"] = f"Role must be one of: {allowed_roles}"
 

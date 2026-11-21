@@ -42,8 +42,9 @@ class NotFoundError(AppError):
 class ConsentRequiredError(AppError):
     """Consent not granted for requested access (403)."""
 
-    def __init__(self, message: str = "Consent not granted for this data access"):
+    def __init__(self, message: str = "Consent not granted for this data access", consent_status: str = "absent"):
         super().__init__(message, status_code=403)
+        self.consent_status = consent_status
 
 
 class ValidationError(AppError):

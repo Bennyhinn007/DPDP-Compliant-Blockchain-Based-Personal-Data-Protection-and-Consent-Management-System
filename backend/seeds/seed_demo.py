@@ -94,17 +94,17 @@ def seed():
         credentials = []  # (email, password, role) for the one-time summary
 
         # Admin
-        admin = auth.register("admin@dpdp-health.in", admin_pwd, "admin", "Dr. Kaushalya (DPO)")
+        admin = auth.register("admin@dpdp-health.in", admin_pwd, "admin", "Dr. Kaushalya (DPO)", allow_privileged_roles=True)
         credentials.append(("admin@dpdp-health.in", admin_pwd, "admin"))
         print("  ✓ Admin: admin@dpdp-health.in")
 
         # Doctor (Healthcare Provider) — logs into the Provider Portal to create records
-        doctor = auth.register("dr.rahul@citycare.in", doctor_pwd, "doctor", "Dr. Rahul Sharma")
+        doctor = auth.register("dr.rahul@citycare.in", doctor_pwd, "doctor", "Dr. Rahul Sharma", allow_privileged_roles=True, hospital_id="citycare")
         credentials.append(("dr.rahul@citycare.in", doctor_pwd, "doctor"))
         print("  ✓ Doctor: dr.rahul@citycare.in")
 
         # Registration Staff (hospital front desk) — restricted portal: register patients only
-        reg_staff = auth.register("reception@citycare.in", staff_pwd, "registration_staff", "Reception Desk")
+        reg_staff = auth.register("reception@citycare.in", staff_pwd, "registration_staff", "Reception Desk", allow_privileged_roles=True)
         credentials.append(("reception@citycare.in", staff_pwd, "reg.staff"))
         print("  ✓ Registration Staff: reception@citycare.in")
 
@@ -295,6 +295,8 @@ def seed():
                 consent_type=ctype,
                 processing_entity_name=entity,
                 expiry_days=days,
+                recipient={"kind": "doctor", "doctor_id": doctor["id"], "hospital_id": "citycare"}
+                if ctype == "healthcare_treatment" else None,
             )
             created_consents.append(result["consent"])
 

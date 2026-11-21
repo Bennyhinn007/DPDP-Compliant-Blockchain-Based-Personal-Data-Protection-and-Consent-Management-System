@@ -1,0 +1,35 @@
+{
+  "patient": "Mira Shah",
+  "doctor": "Dr Arun Rao",
+  "record": "Routine follow-up",
+  "access": [
+    {
+      "status": 403,
+      "decision": "denied",
+      "records": 0,
+      "allergies": []
+    },
+    {
+      "status": 200,
+      "decision": "granted",
+      "records": 1,
+      "allergies": []
+    },
+    {
+      "status": 200,
+      "decision": "granted",
+      "records": 0,
+      "allergies": [
+        "Latex"
+      ]
+    },
+    {
+      "status": 403,
+      "decision": "denied",
+      "records": 0,
+      "allergies": []
+    }
+  ],
+  "auditPurpose": "Healthcare treatment consultation",
+  "allergy": "Latex"
+}

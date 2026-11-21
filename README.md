@@ -1,53 +1,26 @@
-<a id="readme-top"></a>
+# DPDP Healthcare
 
-<div align="center">
+A patient can answer three questions in this application. Who created my medical record? Who has permission to read it? What evidence is there that the record I see today matches the version that was saved?
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=200&section=header&text=DPDP%20Healthcare&fontSize=50&fontColor=fff&animation=twinkling" alt="DPDP Healthcare banner" width="100%" />
+[Open the application](https://dpdphealthcare.bennyhinn.dev) · [Run locally](#-getting-started-locally) · [Architecture](#️-architecture)
 
-<img src="docs/assets/logo.png" alt="DPDP Health logo" width="110" />
+The home page opens the patient and staff portal. Patients can create an account at `/register`. The optional `/walkthrough` shows an interactive example using a synthetic chart. The example follows four doctor requests. Its displayed outcomes are checked against the authenticated Flask routes in the [walkthrough regression test](backend/tests/test_patient_walkthrough.py).
 
-### DPDP-Compliant Blockchain-Based Personal Data Protection and Consent Management System
+## Follow one patient record in the portal
 
-[![Typing SVG](https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=20&pause=1200&color=6366F1&center=true&vCenter=true&width=720&lines=Privacy+off-chain%2C+trust+on-chain;Consent%2C+access%2C+correction+and+erasure+under+the+DPDP+Act+2023;Chameleon-hash+redactable+blockchain;DIDs%2C+on-chain+RBAC+and+ERC-721+assets)](https://github.com/Bennyhinn007/DPDP-Compliant-Blockchain-Based-Personal-Data-Protection-and-Consent-Management-System)
+Patients can sign up on the public registration page. A hospital administrator uses **Register User** to provision staff accounts. The front desk uses **Register Patient** for patient accounts and demographics.
 
-<br/>
+1. **Create a record.** A doctor records a consultation for a synthetic patient. The patient sees its author and hospital in **My Data Center**.
+2. **Change who can read it.** Save two allergies in **My Data Center**. In **Consent Center**, grant healthcare treatment consent to one doctor, select **Allergies**, and check one entry. Open the chart as that doctor to see the selected entry. A second doctor needs a separate direct or hospital grant. Withdraw the grant and check **Audit Timeline** for the access history.
+3. **Inspect the evidence.** Open **Integrity Verification** in the patient portal and select **Verify**. A local match compares the encrypted record with the hash saved in MongoDB. On-chain confirmation also checks a successful Ethereum receipt and the transaction payload for that record ID and hash.
 
-[![Live Demo](https://img.shields.io/badge/%F0%9F%9A%80%20LIVE%20DEMO-Open%20the%20app-6366F1?style=for-the-badge)](https://dpdphealthcare.bennyhinn.dev)
-[![Backend health](https://img.shields.io/badge/API-health%20check-10B981?style=for-the-badge&logo=render&logoColor=white)](https://dpdp-backend-4zto.onrender.com/health)
+The React client talks to a Flask API that enforces roles and consent. MongoDB holds clinical records with field-level encryption. Ethereum stores integrity anchors. The identity, device-certificate, and hardware integrations extend this core workflow.
 
-[![CI](https://img.shields.io/github/actions/workflow/status/Bennyhinn007/DPDP-Compliant-Blockchain-Based-Personal-Data-Protection-and-Consent-Management-System/ci.yml?branch=main&label=CI&style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/Bennyhinn007/DPDP-Compliant-Blockchain-Based-Personal-Data-Protection-and-Consent-Management-System/actions/workflows/ci.yml)
-[![Secret scan](https://img.shields.io/github/actions/workflow/status/Bennyhinn007/DPDP-Compliant-Blockchain-Based-Personal-Data-Protection-and-Consent-Management-System/secret-scan.yml?branch=main&label=Secret%20scan&style=for-the-badge&logo=gitleaks&logoColor=white)](https://github.com/Bennyhinn007/DPDP-Compliant-Blockchain-Based-Personal-Data-Protection-and-Consent-Management-System/actions/workflows/secret-scan.yml)
-[![Keep warm](https://img.shields.io/github/actions/workflow/status/Bennyhinn007/DPDP-Compliant-Blockchain-Based-Personal-Data-Protection-and-Consent-Management-System/keep-warm.yml?label=Keep%20warm&style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/Bennyhinn007/DPDP-Compliant-Blockchain-Based-Personal-Data-Protection-and-Consent-Management-System/actions/workflows/keep-warm.yml)
+## MVP release priority
 
-![DPDP Act](https://img.shields.io/badge/DPDP%20Act-2023-6366F1?style=for-the-badge)
-![SIH](https://img.shields.io/badge/SIH-PS%2026125-FF6B00?style=for-the-badge)
-![Python](https://img.shields.io/badge/Python-3.13-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![Flask](https://img.shields.io/badge/Flask-3-000000?style=for-the-badge&logo=flask&logoColor=white)
-![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
-![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
-![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white)
-![Solidity](https://img.shields.io/badge/Solidity-0.8.24-363636?style=for-the-badge&logo=solidity&logoColor=white)
-![Hardhat](https://img.shields.io/badge/Hardhat-FFF100?style=for-the-badge&logo=ethereum&logoColor=black)
-![Ethereum](https://img.shields.io/badge/Ethereum-Sepolia-3C3C3D?style=for-the-badge&logo=ethereum&logoColor=white)
-![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
-![Render](https://img.shields.io/badge/Render-46E3B7?style=for-the-badge&logo=render&logoColor=black)
-![Espressif](https://img.shields.io/badge/ESP32-E7352C?style=for-the-badge&logo=espressif&logoColor=white)
-![Arduino](https://img.shields.io/badge/Arduino-00878F?style=for-the-badge&logo=arduino&logoColor=white)
+**Consent for a specific doctor or hospital.** The signed-in patient can grant access to an individual doctor or every affiliated doctor at a listed hospital. A direct grant takes precedence. When it ends, an independent active hospital grant can still apply. Doctors without a recorded affiliation appear in their own list for individual grants. Older treatment grants without a linked recipient must be granted again.
 
-<br/>
-
-<a href="https://skillicons.dev"><img src="https://skillicons.dev/icons?i=python,flask,react,ts,vite,tailwind,mongodb,solidity,nodejs,vercel,arduino" alt="Tech stack icons" /></a>
-
-</div>
-
-<br/>
-
-A healthcare personal-data protection and consent management platform aligned with India's **Digital Personal Data Protection (DPDP) Act, 2023**. Patient records are encrypted at rest and anchored on a **redactable (chameleon-hash) blockchain**, so consent, access, correction and erasure rights can be honoured without breaking the audit trail. On top of this sits the **SIH 26125 identity, access and asset layer**: decentralized identifiers (DIDs), on-chain role-based access control, and ERC-721 asset NFTs.
-
-> [!NOTE]
-> Core principle: **privacy off-chain, trust on-chain.** Personal and health data stays encrypted in MongoDB. Only hashes, DIDs, roles and token references touch the blockchain. Healthcare records are never NFTs.
+To populate a local development database with three labeled sample doctors at CityCare Hospital and Riverside Medical Centre, run `python -m seeds.seed_provider_directory` from `backend`. The command preserves existing accounts. Administrators can also choose a hospital when they register a doctor.
 
 ## 📑 Contents
 
@@ -199,8 +172,8 @@ Sources are in [`contracts/src`](contracts/src). Deployment steps: [`docs/sih-co
 ```powershell
 cd backend
 pip install -r requirements.txt
-copy .env.example .env        # macOS/Linux: cp .env.example .env
-python seeds/seed_demo.py     # seed demo data (prints generated passwords once)
+if (!(Test-Path .env)) { Copy-Item .env.example .env }
+python -m app.db_init        # create collections and indexes for local development
 python run.py
 ```
 
@@ -214,7 +187,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173. Vite proxies `/api` to `http://localhost:5000`.
+Keep MongoDB and Flask running while using the portal. Open http://localhost:5173/register to create a patient account. Vite proxies `/api` to `http://localhost:5000`.
 
 ### 📜 Smart contracts (optional)
 
@@ -398,7 +371,7 @@ Built for Smart India Hackathon problem statement 26125 (Bharat Electronics Limi
 [![Star History](https://img.shields.io/github/stars/Bennyhinn007/DPDP-Compliant-Blockchain-Based-Personal-Data-Protection-and-Consent-Management-System?style=for-the-badge&logo=github&color=F59E0B)](https://github.com/Bennyhinn007/DPDP-Compliant-Blockchain-Based-Personal-Data-Protection-and-Consent-Management-System/stargazers)
 [![Contributors](https://img.shields.io/github/contributors/Bennyhinn007/DPDP-Compliant-Blockchain-Based-Personal-Data-Protection-and-Consent-Management-System?style=for-the-badge&logo=github&color=6366F1)](https://github.com/Bennyhinn007/DPDP-Compliant-Blockchain-Based-Personal-Data-Protection-and-Consent-Management-System/graphs/contributors)
 
-[⬆ Back to top](#readme-top)
+[⬆ Back to top](#dpdp-healthcare)
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=120&section=footer" alt="footer wave" width="100%" />
 
