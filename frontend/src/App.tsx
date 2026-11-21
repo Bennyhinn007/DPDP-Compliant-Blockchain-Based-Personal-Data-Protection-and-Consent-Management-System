@@ -134,7 +134,7 @@ function App() {
             {/* Defaults */}
             <Route path="/walkthrough" element={<PatientWalkthrough />} />
             <Route path="/" element={<PortalEntry />} />
-            <Route path="*" element={<Navigate to="/login" replace />} />
+            <Route path="*" element={<PortalEntry />} />
           </Routes>
           </Suspense>
         </BrowserRouter>

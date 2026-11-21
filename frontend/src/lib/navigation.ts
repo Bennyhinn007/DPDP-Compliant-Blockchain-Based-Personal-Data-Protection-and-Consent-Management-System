@@ -154,7 +154,12 @@ export function portalPath(role: string, patientPath = "/dashboard"): string {
     case "dpo": return "/dpo";
     case "doctor": return "/doctor";
     case "registration_staff": return "/staff/register-patient";
-    case "patient": return patientPath;
+    case "patient": {
+      const allowed = NAV_ITEMS.some(
+        (item) => item.roles.includes("patient") && (patientPath === item.path || patientPath.startsWith(`${item.path}/`)),
+      ) || patientPath === "/profile";
+      return allowed ? patientPath : "/dashboard";
+    }
     default: return "/unauthorized";
   }
 }

@@ -19,7 +19,7 @@ import { PageHero } from "@/components/shared/PageHero";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { CONSENT_LABELS, CONSENT_ICONS, ALL_CONSENT_TYPES, statusVariant } from "@/lib/consentMeta";
+import { CONSENT_LABELS, CONSENT_ICONS, ALL_CONSENT_TYPES, needsRegrant, statusVariant } from "@/lib/consentMeta";
 import { formatDate, humanize } from "@/lib/utils";
 import type { Consent, ConsentType } from "@/types";
 
@@ -30,16 +30,24 @@ export function ConsentCenter() {
   const [withdrawTarget, setWithdrawTarget] = useState<Consent | null>(null);
   const [msg, setMsg] = useState("");
 
-  const { data: consents = [] } = useQuery({
+  const consentsQuery = useQuery({
     queryKey: ["consents"],
     queryFn: consentService.list,
   });
+  const consents = consentsQuery.data ?? [];
+  const regrant = consents.filter(needsRegrant);
+
+  const receiptsQuery = useQuery({ queryKey: ["receipts"], queryFn: consentService.receipts });
+  const profile = useQuery({ queryKey: ["profile"], queryFn: patientService.getProfile });
+  const savedAllergies = Array.isArray(profile.data?.allergies) ? profile.data.allergies : null;
 
   const options = useQuery({ queryKey: ["consent-scope-options"], queryFn: consentService.scopeOptions });
 
   const invalidate = (m: string) => {
     setMsg(m);
     queryClient.invalidateQueries({ queryKey: ["consents"] });
+    queryClient.invalidateQueries({ queryKey: ["timeline"] });
+    queryClient.invalidateQueries({ queryKey: ["receipts"] });
   };
 
   return (
@@ -59,8 +67,26 @@ export function ConsentCenter() {
       {options.isError && <p role="alert">Sharing options could not be loaded. <button className="underline" onClick={() => options.refetch()}>Retry</button></p>}
       {msg && <div className="rounded-md bg-success/10 px-4 py-3 text-sm text-success">{msg}</div>}
 
+      {regrant.length > 0 && (
+        <div role="alert" className="rounded-md bg-warning/10 px-4 py-3 text-sm text-warning">
+          <strong>Re-grant needed.</strong> These older treatment grants have no linked doctor or hospital, so no chart is shared.
+          Create a new grant for: {regrant.map((c) => c.processing_entity_name).join(", ")}.
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {consents.length === 0 ? (
+        {consentsQuery.isLoading ? (
+          <Card className="col-span-full">
+            <CardContent className="py-12 text-center text-sm text-neutral-400">Loading your consents…</CardContent>
+          </Card>
+        ) : consentsQuery.isError ? (
+          <Card className="col-span-full">
+            <CardContent role="alert" className="py-12 text-center text-sm text-danger">
+              Your consents could not be loaded.{" "}
+              <button className="underline" onClick={() => consentsQuery.refetch()}>Retry</button>
+            </CardContent>
+          </Card>
+        ) : consents.length === 0 ? (
           <Card className="col-span-full">
             <CardContent className="py-12 text-center text-sm text-neutral-400">
               No consents yet. Click "Grant Consent" to begin.
@@ -92,10 +118,23 @@ export function ConsentCenter() {
                 </div>
 
                 {c.data_categories_in_scope?.includes("allergies") && (
-                  <p className="mt-2 text-sm">Selected allergies: {c.selected_allergies?.join(", ") || "None selected"}</p>
+                  <p className="mt-2 text-sm">
+                    Selected allergies:{" "}
+                    {c.selected_allergies?.length
+                      ? c.selected_allergies.map((a, i) => (
+                          <span key={a}>
+                            {i > 0 && ", "}
+                            {a}
+                            {savedAllergies && !savedAllergies.includes(a) && " (no longer saved, not shared)"}
+                          </span>
+                        ))
+                      : "None selected"}
+                  </p>
                 )}
-                {c.consent_type === "healthcare_treatment" && !c.processing_entity_id && (
-                  <p className="mt-2 text-sm text-warning">This older grant has no linked recipient. Create a new grant to share a chart.</p>
+                {needsRegrant(c) && (
+                  <p className="mt-2 rounded-md bg-warning/10 px-3 py-2 text-sm font-medium text-warning">
+                    Re-grant needed: this older grant has no linked recipient, so no chart is shared. Withdraw it and create a new grant.
+                  </p>
                 )}
                 <div className="mt-3 text-xs text-neutral-400">
                   {c.status === "active" ? `Expires ${formatDate(c.expires_at)}` : `Granted ${formatDate(c.granted_at)}`}
@@ -103,9 +142,11 @@ export function ConsentCenter() {
 
                 {c.status === "active" && (
                   <div className="mt-4 flex gap-2">
-                    <Button variant="outline" size="sm" disabled={!options.data} onClick={() => setModifyTarget(c)}>
-                      Modify
-                    </Button>
+                    {!needsRegrant(c) && (
+                      <Button variant="outline" size="sm" disabled={!options.data} onClick={() => setModifyTarget(c)}>
+                        Modify
+                      </Button>
+                    )}
                     <Button variant="danger" size="sm" onClick={() => setWithdrawTarget(c)}>
                       Withdraw
                     </Button>
@@ -116,6 +157,31 @@ export function ConsentCenter() {
           ))
         )}
       </div>
+
+      <section aria-labelledby="receipts-heading" className="space-y-3">
+        <h2 id="receipts-heading" className="text-base font-semibold text-neutral-800">Consent receipts</h2>
+        {receiptsQuery.isLoading ? (
+          <p className="text-sm text-neutral-400">Loading receipts…</p>
+        ) : receiptsQuery.isError ? (
+          <p role="alert" className="text-sm text-danger">
+            Receipts could not be loaded.{" "}
+            <button className="underline" onClick={() => receiptsQuery.refetch()}>Retry</button>
+          </p>
+        ) : (receiptsQuery.data ?? []).length === 0 ? (
+          <p className="text-sm text-neutral-400">No receipts yet. One is issued each time you grant, modify or withdraw consent.</p>
+        ) : (
+          <ul className="space-y-2">
+            {(receiptsQuery.data ?? []).map((r) => (
+              <li key={r._id} className="rounded-md border border-neutral-200 p-3 text-sm">
+                <span className="font-medium">{humanize(r.action_type)}</span>
+                {" · "}{r.processing_entity_name}
+                {" · "}Allergies: {r.selected_allergies?.length ? r.selected_allergies.join(", ") : "none"}
+                {" · "}{formatDate(r.issued_at)}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {grantOpen && options.data && (
         <GrantDialog
@@ -185,7 +251,7 @@ function AllergyChoices({ value, onChange }: { value: string[]; onChange: (items
   const saved = Array.isArray(profile.data?.allergies) ? profile.data.allergies : [];
   return <fieldset className="space-y-2 rounded-md border p-3">
     <legend className="px-1 text-sm font-medium">Which allergies can they see?</legend>
-    {profile.isLoading && <p className="text-sm">Loading your allergies�</p>}
+    {profile.isLoading && <p className="text-sm">Loading your allergies…</p>}
     {profile.isError && <button className="underline" onClick={() => profile.refetch()}>Retry loading your allergies</button>}
     {profile.data && !saved.length && <p className="text-sm">Your profile has no saved allergies.</p>}
     {Array.from(new Set([...saved, ...value])).sort((a, b) => a.localeCompare(b)).map(item =>
@@ -226,7 +292,7 @@ function GrantDialog({
 
   const mutation = useMutation({
     mutationFn: () => consentService.grant(consentType, entity, 365, scope, recipient, sharesAllergies ? allergies : []),
-    onSuccess: () => onSuccess("Consent granted. Your receipt is ready."),
+    onSuccess: () => onSuccess("Consent granted. Your receipt is listed under Consent receipts."),
     onError: (err) => setError(getErrorMessage(err)),
   });
 

@@ -3,7 +3,7 @@
  */
 
 import api from "./api";
-import type { Consent, ConsentType } from "@/types";
+import type { Consent, ConsentReceipt, ConsentType } from "@/types";
 
 export type ScopeOptions = Record<ConsentType, string[]>;
 
@@ -32,6 +32,11 @@ export const consentService = {
   async list(): Promise<Consent[]> {
     const { data } = await api.get<{ consents: Consent[] }>("/consents/");
     return data.consents;
+  },
+
+  async receipts(): Promise<ConsentReceipt[]> {
+    const { data } = await api.get<{ receipts: ConsentReceipt[] }>("/consents/receipts");
+    return data.receipts;
   },
 
   async grant(

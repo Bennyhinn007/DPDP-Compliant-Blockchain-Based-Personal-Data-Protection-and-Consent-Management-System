@@ -5,6 +5,7 @@
  */
 
 import { useState } from "react";
+import { isAxiosError } from "axios";
 import { motion } from "framer-motion";
 import {
   Search,
@@ -42,6 +43,9 @@ export function DoctorDashboard() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PatientSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
+  const [searched, setSearched] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [accessDenied403, setAccessDenied403] = useState(false);
   const [accessResult, setAccessResult] = useState<PatientAccessResult | null>(null);
   const [accessDenied, setAccessDenied] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -49,13 +53,17 @@ export function DoctorDashboard() {
   const handleSearch = async () => {
     if (query.length < 2) return;
     setSearching(true);
+    setSearchError(null);
     setAccessResult(null);
     setAccessDenied(null);
     try {
       const patients = await doctorService.searchPatients(query);
       setResults(patients);
-    } catch {
+      setSearched(true);
+    } catch (err: unknown) {
       setResults([]);
+      setSearched(false);
+      setSearchError(getErrorMessage(err));
     } finally {
       setSearching(false);
     }
@@ -65,12 +73,14 @@ export function DoctorDashboard() {
     setLoading(true);
     setAccessResult(null);
     setAccessDenied(null);
+    setAccessDenied403(false);
     try {
       const result = await doctorService.getPatientRecords(patientId);
       setAccessResult(result);
     } catch (err: unknown) {
       const message = getErrorMessage(err);
       setAccessDenied(message);
+      setAccessDenied403(isAxiosError(err) && err.response?.status === 403);
     } finally {
       setLoading(false);
     }
@@ -108,6 +118,10 @@ export function DoctorDashboard() {
             </Button>
           </div>
 
+          {searchError && <p role="alert" className="mt-4 text-sm text-danger">{searchError}</p>}
+          {searched && !searchError && results.length === 0 && (
+            <p className="mt-4 text-sm text-neutral-500">No patients match your search.</p>
+          )}
           {results.length > 0 && (
             <div className="mt-4 space-y-2">
               {results.map((patient) => (
@@ -165,10 +179,12 @@ export function DoctorDashboard() {
               <div>
                 <h3 className="text-base font-semibold text-danger">Access Denied</h3>
                 <p className="mt-1 text-sm text-neutral-600">{accessDenied}</p>
-                <div className="mt-3 rounded-md bg-neutral-50 px-3 py-2 text-xs text-neutral-500">
-                  <strong>DPDP Act Compliance:</strong> Data access requires explicit patient consent.
-                  This denial has been recorded in the audit log.
-                </div>
+                {accessDenied403 && (
+                  <div className="mt-3 rounded-md bg-neutral-50 px-3 py-2 text-xs text-neutral-500">
+                    <strong>DPDP Act Compliance:</strong> Data access requires explicit patient consent.
+                    This denial has been recorded in the audit log.
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -267,6 +283,8 @@ function ProviderCreateRecord() {
   const [results, setResults] = useState<PatientSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [selected, setSelected] = useState<PatientSearchResult | null>(null);
+  const [searched, setSearched] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   const [recordType, setRecordType] = useState("consultation");
   const [title, setTitle] = useState("");
@@ -280,10 +298,14 @@ function ProviderCreateRecord() {
   const search = async () => {
     if (query.length < 2) return;
     setSearching(true);
+    setSearchError(null);
     try {
       setResults(await doctorService.searchPatients(query));
-    } catch {
+      setSearched(true);
+    } catch (err) {
       setResults([]);
+      setSearched(false);
+      setSearchError(getErrorMessage(err));
     } finally {
       setSearching(false);
     }
@@ -341,6 +363,10 @@ function ProviderCreateRecord() {
                 {searching ? "Searching..." : "Search"}
               </Button>
             </div>
+            {searchError && <p role="alert" className="mt-2 text-sm text-danger">{searchError}</p>}
+            {searched && !searchError && results.length === 0 && (
+              <p className="mt-2 text-sm text-neutral-500">No patients match your search.</p>
+            )}
             {results.length > 0 && (
               <div className="mt-2 space-y-1.5">
                 {results.map((p) => (

@@ -31,6 +31,14 @@ export const ALL_CONSENT_TYPES: ConsentType[] = [
   "marketing_access",
 ];
 
+export function needsRegrant(c: {
+  consent_type: string;
+  status: string;
+  processing_entity_id?: string | null;
+}): boolean {
+  return c.consent_type === "healthcare_treatment" && c.status === "active" && !c.processing_entity_id;
+}
+
 export function statusVariant(status: ConsentStatus): "success" | "danger" | "warning" | "neutral" {
   switch (status) {
     case "active":

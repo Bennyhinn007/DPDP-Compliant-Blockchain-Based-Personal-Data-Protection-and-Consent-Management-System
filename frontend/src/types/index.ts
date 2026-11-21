@@ -136,8 +136,19 @@ export interface Consent {
   version: number;
 }
 
+export interface ConsentReceipt {
+  _id: string;
+  consent_id: string;
+  action_type: string;
+  consent_type: ConsentType;
+  processing_entity_name: string;
+  processing_entity_id?: string | null;
+  selected_allergies?: string[];
+  issued_at: string;
+}
+
 export interface AuditEvent {
-  details?: { data_categories?: string[] };
+  details?: { data_categories?: string[]; doctor_name?: string };
   _id: string;
   actor_id: string;
   actor_role: string;

@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { ShieldX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { portalPath } from "@/lib/navigation";
 
 export function UnauthorizedPage() {
   const { user } = useAuth();
@@ -18,20 +19,7 @@ export function UnauthorizedPage() {
       navigate("/login", { replace: true });
       return;
     }
-    switch (user.role) {
-      case "patient":
-        navigate("/dashboard", { replace: true });
-        break;
-      case "doctor":
-        navigate("/doctor", { replace: true });
-        break;
-      case "admin":
-      case "dpo":
-        navigate("/dpo", { replace: true });
-        break;
-      default:
-        navigate("/login", { replace: true });
-    }
+    navigate(portalPath(user.role), { replace: true });
   };
 
   return (

@@ -46,14 +46,16 @@ const EVENT_TYPE_OPTIONS = [
   { value: "update", label: "Record Updated" },
   { value: "delete", label: "Record Erased" },
   { value: "consent_grant", label: "Consent Granted" },
+  { value: "consent_modify", label: "Consent Modified" },
   { value: "consent_withdraw", label: "Consent Withdrawn" },
+  { value: "read", label: "Record Access" },
 ];
 
 export function AuditTimeline() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
 
-  const { data: events = [] } = useQuery({
+  const { data: events = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["timeline", typeFilter],
     queryFn: () => auditService.getTimeline(typeFilter || undefined),
   });
@@ -88,7 +90,7 @@ export function AuditTimeline() {
 
       {/* Statistics */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Total Events" value={stats.total} icon={Activity} variant="primary" />
+        <StatCard label="Events loaded" value={stats.total} icon={Activity} variant="primary" />
         <StatCard label="Today" value={stats.today} icon={LogIn} variant="success" />
         <StatCard label="Critical" value={stats.critical} icon={ShieldCheck} variant="warning" />
       </div>
@@ -123,7 +125,14 @@ export function AuditTimeline() {
           <CardTitle>Activity Timeline</CardTitle>
         </CardHeader>
         <CardContent>
-          {filtered.length === 0 ? (
+          {isLoading ? (
+            <p className="py-12 text-center text-sm text-neutral-400">Loading your timeline…</p>
+          ) : isError ? (
+            <p role="alert" className="py-12 text-center text-sm text-danger">
+              Your timeline could not be loaded.{" "}
+              <button className="underline" onClick={() => refetch()}>Retry</button>
+            </p>
+          ) : filtered.length === 0 ? (
             <p className="py-12 text-center text-sm text-neutral-400">No events match your filters</p>
           ) : (
             <ol className="relative space-y-6 border-l-2 border-neutral-100 pl-6">
@@ -158,6 +167,9 @@ function TimelineItem({ event }: { event: AuditEvent }) {
           <Badge variant={severityVariant}>{event.severity}</Badge>
         </div>
         <p className="mt-1 text-sm text-neutral-600">{event.reason}</p>
+        {event.details?.doctor_name && (
+          <p className="mt-1 text-sm">Requested by {event.details.doctor_name}</p>
+        )}
         {Array.isArray(event.details?.data_categories) && (
           <p className="mt-1 text-sm">Data shared: {event.details.data_categories.map(humanize).join(", ") || "No clinical data returned"}</p>
         )}
