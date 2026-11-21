@@ -47,6 +47,35 @@ api.interceptors.response.use(
   }
 );
 
+let warmedUp = false;
+
+/**
+ * Open connections to the API and wake the server (if it is asleep) while the
+ * user is still on the login page, so the login request does not pay for it.
+ * Fire-and-forget: errors are ignored and nothing is read from the response.
+ */
+export function warmUpApi(): void {
+  if (warmedUp) return;
+  warmedUp = true;
+  try {
+    const base = new URL(API_BASE_URL, window.location.href);
+    if (base.origin !== window.location.origin) {
+      // Credentialed connection for the API calls themselves (withCredentials).
+      const link = document.createElement("link");
+      link.rel = "preconnect";
+      link.href = base.origin;
+      document.head.appendChild(link);
+    }
+    // Plain GET, no custom headers, so no CORS preflight. Its connection is the
+    // uncredentialed one that CORS preflights use.
+    fetch(`${base.href.replace(/\/$/, "")}/auth/health`, { mode: "no-cors", cache: "no-store" }).catch(
+      () => undefined
+    );
+  } catch {
+    // Warm-up is best effort only.
+  }
+}
+
 /**
  * Extract a human-readable error message from an Axios error.
  */

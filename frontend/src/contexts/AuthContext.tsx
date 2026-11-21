@@ -7,7 +7,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { authService } from "@/services/authService";
 import { identityService } from "@/services/identityService";
-import { loadWallet, personalSign, deriveDid } from "@/lib/wallet";
 import { getProvider } from "@/lib/fingerprint";
 import type { User } from "@/types";
 
@@ -107,6 +106,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * as password login, so we persist the session identically.
    */
   const loginWithDid = async (): Promise<User> => {
+    // Loaded on demand so password login does not download the crypto code.
+    const { loadWallet, personalSign, deriveDid } = await import("@/lib/wallet");
     const wallet = loadWallet();
     if (!wallet) {
       throw new Error(

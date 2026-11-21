@@ -10,13 +10,15 @@ import { QueryProvider } from "@/contexts/QueryProvider";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { portalPath } from "@/lib/navigation";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
-import { AppShell } from "@/layouts/AppShell";
 import { Toaster } from "sonner";
 import { PageLoader } from "@/components/shared/PageLoader";
 
 // Page components are lazy-loaded so each route ships in its own chunk — the
 // initial bundle stays small and a patient never downloads admin/DPO/doctor code.
 // (Named exports -> map to a default for React.lazy.)
+// The signed-in layout (sidebar, framer-motion) is lazy too, so /login does not
+// download it; LoginPage prefetches it while the user fills in the form.
+const AppShell = lazy(() => import("@/layouts/AppShell").then((m) => ({ default: m.AppShell })));
 const LoginPage = lazy(() => import("@/pages/auth/LoginPage").then((m) => ({ default: m.LoginPage })));
 const PatientWalkthrough = lazy(() => import("@/pages/PatientWalkthrough").then((m) => ({ default: m.PatientWalkthrough })));
 const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage").then((m) => ({ default: m.RegisterPage })));

@@ -37,6 +37,9 @@ def create_app(config_name: str = "development") -> Flask:
             "methods": ["GET", "POST", "PUT", "DELETE", "PATCH"],
             "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
             "supports_credentials": True,
+            # Let browsers cache a preflight for 10 minutes (default is 5 s),
+            # so repeat API calls skip the extra OPTIONS round trip.
+            "max_age": 600,
         }
     })
 

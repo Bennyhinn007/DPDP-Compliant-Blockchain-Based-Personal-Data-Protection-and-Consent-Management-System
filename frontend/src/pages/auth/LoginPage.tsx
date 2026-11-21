@@ -4,13 +4,14 @@
  * Professional healthcare portal authentication.
  */
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Lock, Mail, AlertCircle, KeyRound, Fingerprint } from "lucide-react";
 import { isAxiosError } from "axios";
 import { useAuth } from "@/contexts/AuthContext";
 import { portalPath } from "@/lib/navigation";
-import { getErrorMessage } from "@/services/api";
+import { getErrorMessage, warmUpApi } from "@/services/api";
+import { prefetchSignedInApp } from "@/lib/prefetch";
 import { FingerprintError } from "@/lib/fingerprint";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +50,18 @@ export function LoginPage() {
     setFpProvider(undefined);
     setUseCodeInstead(false);
   };
+
+  // While the user types: wake the API and open its connections, and once the
+  // page is idle fetch the signed-in layout and dashboards in the background.
+  useEffect(() => {
+    warmUpApi();
+    if ("requestIdleCallback" in window) {
+      const id = window.requestIdleCallback(prefetchSignedInApp, { timeout: 2000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = setTimeout(prefetchSignedInApp, 1000);
+    return () => clearTimeout(id);
+  }, []);
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/dashboard";
 
@@ -242,7 +255,7 @@ export function LoginPage() {
               </button>
             </form>
           ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} onFocus={prefetchSignedInApp} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
               <div className="relative">

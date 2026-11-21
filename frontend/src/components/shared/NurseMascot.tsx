@@ -13,6 +13,9 @@ const SIZE = 112;
 function preload(src: string): Promise<void> {
   return new Promise((resolve) => {
     const img = new Image();
+    // Low priority: the sheets must not compete with the login request or the
+    // dashboard code on a slow connection.
+    img.setAttribute("fetchpriority", "low");
     img.onload = img.onerror = () => resolve();
     img.src = src;
     if (img.decode) img.decode().then(() => resolve(), () => resolve());

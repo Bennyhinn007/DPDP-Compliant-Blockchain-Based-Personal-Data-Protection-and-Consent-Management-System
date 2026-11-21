@@ -30,13 +30,16 @@ import secrets
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
-from eth_account import Account
-from eth_account.messages import encode_defunct
-from eth_keys import keys as eth_keys
-from eth_utils import keccak
 from pymongo.errors import DuplicateKeyError
 
 from app.utils.helpers import utc_now
+
+
+# eth_account / eth_keys / eth_utils are imported on first use so that app
+# startup (every worker on a cold start) does not pay their import cost.
+def keccak(*args, **kwargs) -> bytes:
+    from eth_utils import keccak as _keccak
+    return _keccak(*args, **kwargs)
 
 
 # Bitcoin Base58 alphabet (base58btc).
@@ -269,6 +272,8 @@ class DIDService:
             raise ValueError("Challenge expired")
 
         message = challenge["message"]
+        from eth_account import Account
+        from eth_account.messages import encode_defunct
         try:
             recovered = Account.recover_message(encode_defunct(text=message), signature=signature)
         except Exception:
@@ -301,6 +306,9 @@ class DIDService:
         the PRIVATE KEY is generated and held CLIENT-SIDE (browser wallet) and
         never sent to the server. Returns private_key, public_key (65-byte hex).
         """
+        from eth_account import Account
+        from eth_keys import keys as eth_keys
+
         acct = Account.create()
         priv = acct.key
         pk = eth_keys.PrivateKey(priv)

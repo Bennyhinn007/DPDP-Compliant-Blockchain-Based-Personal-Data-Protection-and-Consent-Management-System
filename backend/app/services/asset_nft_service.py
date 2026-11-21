@@ -21,10 +21,14 @@ from __future__ import annotations
 import json
 from typing import Optional
 
-from eth_utils import keccak
-
 from app.utils.helpers import generate_uuid, utc_now
 from app.services.encryption_service import get_encryption_service
+
+
+def keccak(*args, **kwargs) -> bytes:
+    """eth_utils.keccak, imported on first use to keep app startup fast."""
+    from eth_utils import keccak as _keccak
+    return _keccak(*args, **kwargs)
 
 
 # Demo asset types (synthetic). Index maps to the uint8 assetType on-chain.

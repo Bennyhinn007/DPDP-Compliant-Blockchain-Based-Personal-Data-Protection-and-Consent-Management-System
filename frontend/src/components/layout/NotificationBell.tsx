@@ -16,7 +16,9 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false);
 
   const { data: events = [] } = useQuery({
-    queryKey: ["notifications-bell"],
+    // Same key and request as the patient dashboard timeline, so React Query
+    // sends one GET /audit/timeline instead of two.
+    queryKey: ["timeline"],
     queryFn: () => auditService.getTimeline(),
     enabled: user?.role === "patient",
     staleTime: 60_000,

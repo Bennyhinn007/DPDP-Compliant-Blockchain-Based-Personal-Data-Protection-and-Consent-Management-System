@@ -15,10 +15,12 @@ No healthcare data is ever stored on-chain.
 
 import hashlib
 import json
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
-from web3 import Web3
-from web3.exceptions import TransactionNotFound
+# web3 is imported inside the methods that use it, so importing this module
+# at app startup does not pay web3's ~0.85 s import cost.
+if TYPE_CHECKING:
+    from web3 import Web3
 
 from app.utils.helpers import generate_uuid, utc_now
 
@@ -26,7 +28,7 @@ from app.utils.helpers import generate_uuid, utc_now
 class BlockchainService:
     """Manages blockchain hash anchoring on Ganache."""
 
-    def __init__(self, db, w3: Web3, config=None):
+    def __init__(self, db, w3: "Web3", config=None):
         self.db = db
         self.anchors = db["blockchain_anchors"]
         self.w3 = w3
@@ -210,6 +212,7 @@ class BlockchainService:
     def _mined_transaction(receipt) -> tuple:
         if receipt.status != 1:
             raise ValueError("Anchor transaction reverted")
+        from web3 import Web3
         return Web3.to_hex(receipt.transactionHash), receipt.blockNumber
 
     def explorer_link(self, tx_hash: str) -> Optional[str]:
@@ -254,6 +257,8 @@ class BlockchainService:
             return dict(result, message="The local hash matches. The anchor belongs to another network.")
         if not self.is_connected:
             return dict(result, message="The local hash matches. The blockchain is unavailable for verification.")
+
+        from web3.exceptions import TransactionNotFound
 
         try:
             if self._chain_id and self.w3.eth.chain_id != self._chain_id:

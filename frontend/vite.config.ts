@@ -32,6 +32,9 @@ export default defineConfig({
           "motion": ["framer-motion"],
           "query": ["@tanstack/react-query"],
           "crypto": ["@noble/secp256k1", "@noble/hashes"],
+          // clsx is also a recharts dependency; without its own chunk Rollup
+          // puts it in "charts", which made /login download recharts.
+          "ui-utils": ["clsx", "tailwind-merge"],
         },
       },
     },
