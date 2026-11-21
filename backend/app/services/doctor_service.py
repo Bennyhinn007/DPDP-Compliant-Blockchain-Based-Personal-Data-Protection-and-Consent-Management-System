@@ -32,11 +32,10 @@ class DoctorService:
         Does NOT require consent (searching ≠ accessing records).
         """
         # Get all non-redacted patients
-        patients = list(self.patients.find({"redacted": False}, {"full_name": 1, "user_id": 1}).limit(50))
         results = []
 
         recipient_keys = doctor_recipient_keys(self.db, doctor_id)
-        for p in patients:
+        for p in self.patients.find({"redacted": False}, {"full_name": 1, "user_id": 1}):
             decrypted = self.enc.decrypt_document(p)
             name = decrypted.get("full_name", "")
             if name and query.lower() in name.lower():
@@ -44,8 +43,10 @@ class DoctorService:
                     "_id": p["_id"],
                     "user_id": p["user_id"],
                     "full_name": name,
-                    "has_treatment_consent": bool(self._chart_consent(p["_id"], recipient_keys)),
+                    "has_treatment_consent": bool(self._chart_scope(self._chart_consent(p["_id"], recipient_keys))),
                 })
+                if len(results) >= 50:
+                    break
 
         # Audit the search
         self.audit_svc.log_event(
@@ -77,16 +78,23 @@ class DoctorService:
         # Get patient
         patient = self.patients.find_one({"_id": patient_id}, {"user_id": 1})
         if not patient:
+            self.audit_svc.log_event(
+                actor_id=doctor_id,
+                actor_role="doctor",
+                action_type="read",
+                resource_type="healthcare_records",
+                patient_id=None,
+                reason="Access denied. Patient not found.",
+                severity="warning",
+                details={"patient_id": patient_id, "doctor_name": doctor_name},
+            )
             raise NotFoundError("Patient not found")
 
         # Check consent
         recipient_keys = doctor_recipient_keys(self.db, doctor_id)
         consent = self._chart_consent(patient_id, recipient_keys)
 
-        scope = consent.get("data_categories_in_scope") if consent else None
-        # These are the two categories served by this chart endpoint.
-        chart_scope = [key for key in ("allergies", "medical_history")
-                       if isinstance(scope, list) and key in scope]
+        chart_scope = self._chart_scope(consent)
         if not chart_scope:
             latest = consent or self.consent_svc.latest_inactive_consent(patient_id, "healthcare_treatment", recipient_keys)
             status = latest["status"] if latest else "absent"
@@ -106,7 +114,7 @@ class DoctorService:
                 patient_id=patient["user_id"],
                 reason=f"Access denied. {message}",
                 severity="warning",
-                details={"patient_id": patient_id, "consent_status": status,
+                details={"patient_id": patient_id, "doctor_name": doctor_name, "consent_status": status,
                          "consent_id": latest["_id"] if latest else None},
             )
             raise ConsentRequiredError(message, consent_status=status)
@@ -151,6 +159,7 @@ class DoctorService:
             reason="Access GRANTED: Valid healthcare_treatment consent",
             details={
                 "patient_id": patient_id,
+                "doctor_name": doctor_name,
                 "consent_id": consent["_id"],
                 "records_accessed": len(records),
                 "data_categories": disclosed,
@@ -181,6 +190,13 @@ class DoctorService:
             "records": records,
             "access_status": "granted",
         }
+
+    @staticmethod
+    def _chart_scope(consent):
+        # These are the two categories served by this chart endpoint.
+        scope = consent.get("data_categories_in_scope") if consent else None
+        return [key for key in ("allergies", "medical_history")
+                if isinstance(scope, list) and key in scope]
 
     def _chart_consent(self, patient_id, recipient_keys):
         # A direct grant takes precedence over a matching hospital grant.

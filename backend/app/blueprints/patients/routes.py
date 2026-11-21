@@ -40,13 +40,14 @@ def _audit_record_created(record: dict, actor_role: str, patient_id: str) -> Non
     """
     try:
         from app.services.audit_service import AuditService
+        profile = get_db()["patients"].find_one({"_id": patient_id}, {"user_id": 1})
         AuditService(get_db()).log_event(
             actor_id=g.current_user_id,
             actor_role=actor_role,
             action_type="create",
             resource_type="healthcare_records",
             resource_id=record["_id"],
-            patient_id=patient_id,
+            patient_id=profile["user_id"] if profile else patient_id,
             reason="Healthcare record created at point of care",
             details={
                 "record_type": record.get("record_type"),

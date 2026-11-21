@@ -146,6 +146,11 @@ def blockchain_status():
 def get_record_anchors(record_id):
     """Get all blockchain anchors for a specific record."""
     db = get_db()
+    if g.current_user_role == "patient":
+        record = db["healthcare_records"].find_one({"_id": record_id}, {"patient_id": 1})
+        patient = db["patients"].find_one({"user_id": g.current_user_id})
+        if not record or not patient or record["patient_id"] != patient["_id"]:
+            raise AuthorizationError("You can only verify your own records")
     anchors = list(
         db["blockchain_anchors"].find({"resource_id": record_id}).sort("created_at", -1)
     )
